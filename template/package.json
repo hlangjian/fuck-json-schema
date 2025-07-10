@@ -1,31 +1,28 @@
 {
   "name": "@huanglangjian/template",
   "version": "0.0.1",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.mts"
     },
     "./java": {
-      "types": "./dist/java.d.ts"
+      "types": "./dist/java.d.mts"
     },
     "./javascript": {
-      "types": "./dist/javascript.d.ts"
+      "types": "./dist/javascript.d.mts"
     },
     "./chsarp": {
-      "types": "./dist/chsarp.d.ts"
+      "types": "./dist/chsarp.d.mts"
     },
     "./go": {
-      "types": "./dist/go.d.ts"
+      "types": "./dist/go.d.mts"
     },
     "./python": {
-      "types": "./dist/python.d.ts"
+      "types": "./dist/python.d.mts"
     },
     "./rust": {
-      "types": "./dist/rust.d.ts"
+      "types": "./dist/rust.d.mts"
     }
   },
   "scripts": {
