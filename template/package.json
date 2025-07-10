@@ -1,0 +1,53 @@
+{
+  "name": "@huanglangjian/template",
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./java": {
+      "types": "./dist/java.d.ts"
+    },
+    "./javascript": {
+      "types": "./dist/javascript.d.ts"
+    },
+    "./chsarp": {
+      "types": "./dist/chsarp.d.ts"
+    },
+    "./go": {
+      "types": "./dist/go.d.ts"
+    },
+    "./python": {
+      "types": "./dist/python.d.ts"
+    },
+    "./rust": {
+      "types": "./dist/rust.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "template",
+    "code-generation",
+    "typescript"
+  ],
+  "author": "huanglangjian",
+  "license": "ISC",
+  "packageManager": "pnpm@10.10.0",
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "src"
+  ]
+}
