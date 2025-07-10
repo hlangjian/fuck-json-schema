@@ -1,6 +1,7 @@
 {
   "name": "@huanglangjian/template",
   "version": "0.0.2",
+  "private": "false",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
