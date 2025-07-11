@@ -1,5 +1,11 @@
 # @huanglangjian/template
 
+## 0.2.1
+
+### Patch Changes
+
+- bef6fe6: fix
+
 ## 0.2.0
 
 ### Minor Changes
