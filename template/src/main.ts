@@ -1,3 +1,3 @@
 export { createTemplate, indentAwareTemplate } from './create-template'
 
-export { outputFile } from './output-file'
+export { outputFile, outputFileSync } from './output-file'
