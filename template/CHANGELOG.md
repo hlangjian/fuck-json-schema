@@ -1,5 +1,11 @@
 # @huanglangjian/template
 
+## 0.2.0
+
+### Minor Changes
+
+- f178ad6: add outputFileSync
+
 ## 0.1.0
 
 ### Minor Changes
