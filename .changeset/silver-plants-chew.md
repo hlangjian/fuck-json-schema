@@ -1,0 +1,5 @@
+---
+"@huanglangjian/template": patch
+---
+
+fix
