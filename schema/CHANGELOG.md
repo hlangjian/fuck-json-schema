@@ -1,5 +1,11 @@
 # @huanglangjian/schema
 
+## 0.1.1
+
+### Patch Changes
+
+- 7ae544c: publish folder "dist"
+
 ## 0.1.0
 
 ### Minor Changes
