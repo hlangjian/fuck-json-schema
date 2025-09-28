@@ -1,5 +1,11 @@
 # @huanglangjian/schema
 
+## 0.1.4
+
+### Patch Changes
+
+- ce2b9d1: trigger ci
+
 ## 0.1.3
 
 ### Patch Changes
