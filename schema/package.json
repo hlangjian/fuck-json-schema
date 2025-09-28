@@ -1,14 +1,14 @@
 {
     "name": "@huanglangjian/schema",
     "type": "module",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "private": false,
     "files": [
         "dist"
     ],
     "scripts": {
-        "test": "tsx src/main.ts",
-        "build": "tsup"
+        "build": "tsup",
+        "prepublishOnly": "pnpm build"
     },
     "devDependencies": {
         "@types/mime-types": "^3.0.1",
