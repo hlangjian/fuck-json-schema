@@ -2,7 +2,7 @@
     "name": "@huanglangjian/schema",
     "type": "module",
     "version": "0.0.1",
-    "private": true,
+    "private": false,
     "scripts": {
         "test": "tsx src/main.ts",
         "build": "tsup"
