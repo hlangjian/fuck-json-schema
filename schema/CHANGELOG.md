@@ -1,5 +1,11 @@
 # @huanglangjian/schema
 
+## 0.1.3
+
+### Patch Changes
+
+- 5cf6337: fix publish
+
 ## 0.1.2
 
 ### Patch Changes
