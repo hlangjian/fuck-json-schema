@@ -1,11 +1,28 @@
 {
-    "type": "module",
     "name": "@huanglangjian/schema",
+    "type": "module",
     "version": "0.0.1",
     "private": true,
+    "scripts": {
+        "test": "tsx src/main.ts",
+        "build": "tsup"
+    },
     "devDependencies": {
+        "@types/mime-types": "^3.0.1",
         "@types/node": "^24.0.12",
+        "tsdown": "^0.15.2",
         "tsup": "^8.5.0",
-        "tsx": "^4.20.3"
+        "tsx": "^4.20.3",
+        "type-fest": "^4.41.0",
+        "typescript": "^5.9.2"
+    },
+    "dependencies": {
+        "yaml": "^2.8.1"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
     }
 }

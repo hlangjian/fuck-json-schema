@@ -11,9 +11,10 @@
   "keywords": [],
   "author": "hlangjian",
   "license": "ISC",
-  "packageManager": "pnpm@10.10.0",
+  "packageManager": "pnpm@10.13.1",
   "devDependencies": {
     "@changesets/cli": "^2.29.5",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   }
 }
