@@ -1,0 +1,28 @@
+{
+    "$schema": "https://turborepo.com/schema.json",
+    "ui": "tui",
+    "tasks": {
+        "dev": {
+            "persistent": true,
+            "cache": false
+        },
+        "codegen": {
+            "inputs": [
+                "src/**/*.ts"
+            ]
+        },
+        "mock": {
+            "persistent": true,
+            "cache": false
+        },
+        "scalar": {
+            "persistent": true,
+            "cache": false
+        },
+        "build": {
+            "inputs": [
+                "src/**/*.ts"
+            ]
+        }
+    }
+}

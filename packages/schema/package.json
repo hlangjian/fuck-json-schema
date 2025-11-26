@@ -1,0 +1,43 @@
+{
+    "name": "@huanglangjian/schema",
+    "type": "module",
+    "version": "0.1.3",
+    "private": false,
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "prepublishOnly": "pnpm build",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:ui": "vitest --ui",
+        "demo": "tsx src/models/union/demo.ts"
+    },
+    "devDependencies": {
+        "@types/markdown-it": "^14.1.2",
+        "@types/mime-types": "^3.0.1",
+        "@types/node": "^24.9.1",
+        "@vitest/ui": "4.0.9",
+        "tsup": "^8.5.0",
+        "tsx": "^4.20.3",
+        "type-fest": "^4.41.0",
+        "typescript": "^5.9.2",
+        "vitest": "^4.0.9"
+    },
+    "dependencies": {
+        "fast-deep-equal": "^3.1.3",
+        "markdown-it": "^14.1.0",
+        "prettier": "^3.6.2",
+        "prettier-plugin-java": "^2.7.7",
+        "reflect-metadata": "^0.2.2",
+        "yaml": "^2.8.1"
+    },
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    }
+}
