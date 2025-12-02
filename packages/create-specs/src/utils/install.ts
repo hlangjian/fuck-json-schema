@@ -2,20 +2,18 @@ import { detectPackageManager } from "./detect-package-manager"
 
 export interface InstallOptions {
     dev?: boolean
-    saveOnly?: boolean
     packages?: string[]
 }
 
 export function getInstallCommand(options?: InstallOptions): { command: string, args: string[] } {
 
-    const { dev = false, saveOnly = false, packages = [] } = options ?? {}
+    const { dev = false, packages = [] } = options ?? {}
 
     const packageManager = detectPackageManager()
 
     if (packageManager.startsWith('npm')) {
         const args: string[] = ['install']
         if (dev) args.push('--dev')
-        if (saveOnly) args.push('--save-only')
         args.push(...packages)
         return { command: packageManager, args }
     }
@@ -23,7 +21,6 @@ export function getInstallCommand(options?: InstallOptions): { command: string, 
     if (packageManager.startsWith('pnpm')) {
         const args: string[] = ['add']
         if (dev) args.push('--dev')
-        if (saveOnly) args.push('--save-only')
         args.push(...packages)
         return { command: packageManager, args }
     }
@@ -31,7 +28,6 @@ export function getInstallCommand(options?: InstallOptions): { command: string, 
     if (packageManager.startsWith('yarn')) {
         const args: string[] = ['add']
         if (dev) args.push('--dev')
-        if (saveOnly) args.push('--save-only')
         args.push(...packages)
         return { command: packageManager, args }
     }
