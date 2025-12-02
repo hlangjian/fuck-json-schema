@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.0.3
+
+### Patch Changes
+
+- b7dc1f0: fix bin name
+
 ## 0.0.2
 
 ### Patch Changes
