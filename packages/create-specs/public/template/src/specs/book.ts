@@ -1,4 +1,4 @@
-import { constant, operation, record, response, routes, string } from "@huanglangjian/schema";
+import { constant, number, operation, record, response, routes, string } from "@huanglangjian/schema"
 
 export const Book = record({
     id: 'Book',
