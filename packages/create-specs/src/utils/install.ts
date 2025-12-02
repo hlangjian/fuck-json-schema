@@ -20,7 +20,7 @@ export function getInstallCommand(options?: InstallOptions): { command: string, 
         return { command: packageManager, args }
     }
 
-    if (packageManager.startsWith('npm')) {
+    if (packageManager.startsWith('pnpm')) {
         const args: string[] = ['add']
         if (dev) args.push('--dev')
         if (saveOnly) args.push('--save-only')
@@ -28,7 +28,7 @@ export function getInstallCommand(options?: InstallOptions): { command: string, 
         return { command: packageManager, args }
     }
 
-    if (packageManager.startsWith('npm')) {
+    if (packageManager.startsWith('yarn')) {
         const args: string[] = ['add']
         if (dev) args.push('--dev')
         if (saveOnly) args.push('--save-only')
