@@ -1,0 +1,27 @@
+{
+    "name": "@huanglangjian/java-springboot-generator",
+    "private": false,
+    "version": "0.0.1",
+    "type": "module",
+    "main": "./dist/index.js",
+    "exports": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch"
+    },
+    "devDependencies": {
+        "@types/node": "^24.10.1",
+        "tsup": "^8.5.1",
+        "typescript": "^5.9.3"
+    },
+    "dependencies": {
+        "utils": "workspace:*",
+        "@huanglangjian/schema": "workspace:*",
+        "@huanglangjian/java-generator": "workspace:*",
+        "@huanglangjian/generic-generator": "workspace:*"
+    }
+}
