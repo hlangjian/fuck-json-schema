@@ -38,7 +38,6 @@ export async function handle(this: CommandContext, flags: Flags, name?: string) 
     await cp(templatePath, outputPath, { recursive: true })
 
     const installDependencies = getInstallCommand({
-        saveOnly: true,
         packages: [
             '@huanglangjian/schema@latest',
             '@huanglangjian/json-schema-generator@latest',
@@ -50,7 +49,7 @@ export async function handle(this: CommandContext, flags: Flags, name?: string) 
     await executeCommand({ cwd: outputPath, ...installDependencies, shell: true })
 
     const installDevDependencies = getInstallCommand({
-        dev: true, saveOnly: true,
+        dev: true,
         packages: [
             '@types/node@latest',
             'typescript@latest',

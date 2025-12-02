@@ -13,14 +13,14 @@ export function getInstallCommand(options?: InstallOptions): { command: string, 
 
     if (packageManager.startsWith('npm')) {
         const args: string[] = ['install']
-        if (dev) args.push('--dev')
+        if (dev) args.push('--save-dev')
         args.push(...packages)
         return { command: packageManager, args }
     }
 
     if (packageManager.startsWith('pnpm')) {
         const args: string[] = ['add']
-        if (dev) args.push('--dev')
+        if (dev) args.push('--save-dev')
         args.push(...packages)
         return { command: packageManager, args }
     }
