@@ -1,5 +1,13 @@
 # @huanglangjian/schema
 
+## 0.1.6
+
+### Patch Changes
+
+- 6e2bd30: add build step to ci
+- Updated dependencies [6e2bd30]
+  - utils@0.0.3
+
 ## 0.1.5
 
 ### Patch Changes
