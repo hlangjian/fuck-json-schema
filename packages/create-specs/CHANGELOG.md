@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.9
+
+### Patch Changes
+
+- 86c21f5: fix template
+
 ## 0.1.8
 
 ### Patch Changes
