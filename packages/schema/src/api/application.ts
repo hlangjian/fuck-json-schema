@@ -1,6 +1,10 @@
-import type { TagObject } from "../openapi-shema"
 import type { RoutesModel } from "./routes"
 import type { Model } from '../models/types'
+
+export interface TagObject {
+    name: string
+    description?: string
+}
 
 export interface ApplicationModel {
     kind: 'application'

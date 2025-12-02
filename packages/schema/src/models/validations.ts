@@ -1,4 +1,4 @@
-import type { FormatVariants } from "../json-schema"
+import type { FormatVariants } from "../net-types"
 
 export interface PatternValidation {
     kind: 'pattern-validation'

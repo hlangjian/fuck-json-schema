@@ -1,8 +1,8 @@
+import { extractPathParams, normalizePath, type ExtractPathParams } from "utils"
 import { string } from "../models/string"
 import type { Model } from "../models/types"
 import type { ContentTypes, HttpMethod } from "../net-types"
 import type { SecurityModel } from "../security"
-import { extractPathParams, type ExtractPathParams } from "../utils"
 
 export interface RoutesModel {
     id: string
@@ -26,22 +26,42 @@ export interface RouterOptions<T extends string> {
 
 export function routes<T extends string>(path: T, options: RouterOptions<T>): RoutesModel {
 
-    const { pathParams, ...rest } = options
+    const { pathParams, operations, ...rest } = options
 
     const pathParamMap = new Map<string, Model>()
 
-    for (const parameterName of extractPathParams(path)) {
-        if (pathParams && parameterName in pathParams) {
-            const model = pathParams[parameterName as keyof typeof pathParams]
-            if (model) pathParamMap.set(parameterName, model)
+    const realOperations = new Map<string, OperationModel>()
+
+    for (const operation of Object.values(operations)) {
+        const operationPath = normalizePath([path, operation.path].join('/'))
+
+        for (const parameterName of extractPathParams(operationPath)) {
+            if (pathParams && parameterName in pathParams) {
+                const model = pathParams[parameterName as keyof typeof pathParams]
+                if (model) pathParamMap.set(parameterName, model)
+            }
+            else pathParamMap.set(parameterName, string())
         }
-        else pathParamMap.set(parameterName, string())
+    }
+
+    for (const [operationName, operation] of Object.entries(operations)) {
+        const operationPath = normalizePath([path, operation.path].join('/'))
+
+        const pathParameters = extractPathParams(operationPath).map(o => [o, pathParamMap.get(o)!] as const)
+
+        const newOperation: OperationModel = {
+            ...operation,
+            pathParams: Object.fromEntries(pathParameters)
+        }
+
+        realOperations.set(operationName, newOperation)
     }
 
     return {
         kind: 'routes',
         path,
         pathParams: Object.fromEntries(pathParamMap),
+        operations: Object.fromEntries(realOperations),
         ...rest
     }
 }
@@ -82,6 +102,7 @@ export function operation<P extends string, T extends { [key: string]: ResponseM
     const {
         contentType = 'application/json',
         responses,
+        pathParams,
         ...rest
     } = options
 
@@ -91,6 +112,7 @@ export function operation<P extends string, T extends { [key: string]: ResponseM
         path,
         contentType,
         responses,
+        pathParams,
         ...rest
     }
 }

@@ -4,22 +4,22 @@
   "type": "module",
   "private": true,
   "scripts": {
+    "build": "turbo build",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "changeset publish",
-    "dev": "turbo @huanglangjian/schema#dev vite-example#dev starter#dev"
+    "release": "changeset publish"
   },
   "keywords": [],
   "author": "hlangjian",
   "license": "ISC",
-  "packageManager": "pnpm@10.13.1",
+  "packageManager": "pnpm@10.24.0",
   "devDependencies": {
-    "@changesets/cli": "^2.29.7",
+    "@changesets/cli": "^2.29.8",
     "chokidar-cli": "^3.0.0",
-    "tsx": "^4.20.6",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "turbo": "2.5.8"
+    "turbo": "^2.6.1"
   }
 }

@@ -32,3 +32,24 @@ export type ContentTypes =
     | (string & {})
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD' | 'TRACE'
+
+export type FormatVariants =
+    | "date-time"
+    | "date"
+    | "time"
+    | "duration"
+    | "email"
+    | "hostname"
+    | "ipv4"
+    | "ipv6"
+    | "uri"
+    | "uri-reference"
+    | "uri-template"
+    | "url"
+    | "json-pointer"
+    | "relative-json-pointer"
+    | "regex"
+    | "byte"
+    | "binary"
+    | "uuid"
+    | "ipvfuture"
