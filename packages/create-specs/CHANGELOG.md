@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.2
+
+### Patch Changes
+
+- 19dc4a3: fix install command
+
 ## 0.1.1
 
 ### Patch Changes
