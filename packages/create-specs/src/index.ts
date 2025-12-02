@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { buildApplication, run } from "@stricli/core"
-import { rootCommand } from "./basic";
+import { rootCommand } from "./basic"
+
+console.log({ execpath: process.env.npm_execpath })
 
 const app = buildApplication(rootCommand, {
     name: 'create specs'

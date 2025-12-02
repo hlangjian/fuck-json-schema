@@ -1,45 +1,101 @@
-import { confirm, isCancel, log, select, text } from "@clack/prompts"
 import { buildCommand, type CommandContext } from "@stricli/core"
 import { cp } from "fs/promises"
-import { dirname, isAbsolute, join, resolve } from "path"
-import { fileURLToPath } from "url"
-
-export const TemplateNames = ['basic'] as const
-
-export type Templates = typeof TemplateNames[number]
+import { confirm, text } from "./prompts"
+import { resolvePathFromPackage } from "./utils/resolve-path-from-package"
+import { executeCommand } from "./utils/execute-command"
+import packageJson from './package-template.json'
+import { resolve } from "path"
+import { outputFile } from 'utils'
+import { getInstallCommand } from "./utils/install"
 
 export interface Flags {
-    name?: string
     output?: string
-    template?: Templates
+    useGit?: boolean
 }
 
-export async function handle(this: CommandContext, flags: Flags) {
+export async function handle(this: CommandContext, flags: Flags, name?: string) {
 
-    const projectName = await getProjectName(flags.name, 'example')
+    const projectName = name ?? await text({
+        message: 'project name',
+        defaultValue: 'example',
+    })
 
-    const template = await getTemplate(flags.template)
+    const outputPath = flags.output ?? await text({
+        message: 'output directory',
+        defaultValue: './' + projectName,
+    })
 
-    const outputPath = await getOutputPath(flags.output, './' + projectName)
+    await outputFile(
+        resolve(outputPath, 'package.json'),
+        JSON.stringify({
+            name: projectName,
+            ...packageJson
+        }, null, 4)
+    )
 
-    const templatePath = getTemplatePath(template)
-
-    await confirmContinue()
+    const templatePath = resolvePathFromPackage('./template')
 
     await cp(templatePath, outputPath, { recursive: true })
+
+    const installDependencies = getInstallCommand({
+        saveOnly: true,
+        packages: [
+            '@huanglangjian/schema@latest',
+            '@huanglangjian/json-schema-generator@latest',
+            '@huanglangjian/openapi-generator@latest',
+            '@scalar/api-reference@latest',
+        ]
+    })
+
+    await executeCommand({ cwd: outputPath, ...installDependencies, shell: true })
+
+    const installDevDependencies = getInstallCommand({
+        dev: true, saveOnly: true,
+        packages: [
+            '@types/node@latest',
+            'typescript@latest',
+            'vite-tsconfig-pths@latest',
+            'vite@latest',
+        ]
+    })
+
+    await executeCommand({ cwd: outputPath, ...installDevDependencies, shell: true })
+
+    const shouldInstall = await confirm({
+        message: 'Install dependencies?',
+        defaultValue: true,
+    })
+
+    if (shouldInstall) {
+        const command = getInstallCommand()
+        await executeCommand({ cwd: outputPath, ...command, shell: true })
+    }
+
+    const useGit = flags.useGit ?? await confirm({
+        message: 'Use git?',
+        defaultValue: true,
+    })
+
+    if (useGit) {
+        await executeCommand({ cwd: outputPath, command: 'git', args: ['--init'], shell: true })
+    }
 }
 
 export const rootCommand = buildCommand({
     func: handle,
     parameters: {
+        positional: {
+            kind: 'tuple',
+            parameters: [
+                {
+                    parse: String,
+                    brief: 'Project name',
+                    optional: true,
+                    placeholder: 'project name'
+                }
+            ]
+        },
         flags: {
-            name: {
-                kind: 'parsed',
-                optional: true,
-                placeholder: 'project-name',
-                parse: String,
-                brief: 'project name'
-            },
             output: {
                 kind: 'parsed',
                 optional: true,
@@ -47,80 +103,19 @@ export const rootCommand = buildCommand({
                 parse: String,
                 brief: 'output directory'
             },
-            template: {
-                kind: 'enum',
+            useGit: {
+                kind: 'boolean',
                 optional: true,
-                placeholder: 'template name',
-                values: TemplateNames,
-                brief: 'template name'
+                placeholder: 'use git?',
+                brief: 'use git'
             }
+        },
+        aliases: {
+            o: 'output',
+            g: 'useGit',
         }
     },
     docs: {
-        brief: 'Create an API specification project with generators.'
+        brief: 'Create an API specification project'
     }
 })
-
-async function getProjectName(name?: string, defaultValue?: string) {
-    if (name) return name
-
-    const ret = await text({
-        message: 'Please input output directory',
-        placeholder: defaultValue,
-        defaultValue: defaultValue,
-    })
-
-    if (isCancel(ret)) return process.exit()
-
-    return ret
-}
-
-async function getTemplate(name?: Templates): Promise<Templates> {
-    if (name) return name
-
-    const ret = await select({
-        message: 'Please select template',
-        options: [
-            { value: 'basic', label: 'basic', hint: 'Basic template with scalar' },
-        ],
-        initialValue: 'basic'
-    })
-
-    if (isCancel(ret)) return process.exit()
-
-    if (TemplateNames.some(o => o === ret)) return ret as Templates
-
-    log.error(`cannot recognize template ${ret}`)
-
-    return process.exit()
-}
-
-async function getOutputPath(path?: string, defaultValue?: string) {
-
-    if (path) return path
-
-    const ret = await text({
-        message: 'Please input output directory',
-        placeholder: defaultValue,
-        defaultValue: defaultValue,
-    })
-
-    if (isCancel(ret)) return process.exit()
-
-    if (isAbsolute(ret)) return ret
-
-    return resolve(process.cwd(), ret)
-}
-
-async function confirmContinue() {
-    const ret = await confirm({
-        message: 'Continue?'
-    })
-
-    if (isCancel(ret) || !ret) return process.exit()
-}
-
-export function getTemplatePath(template: Templates) {
-    const __dirname = dirname(fileURLToPath(import.meta.url))
-    return join(__dirname, 'templates', template)
-}
