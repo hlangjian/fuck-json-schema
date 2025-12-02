@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.0.4
+
+### Patch Changes
+
+- 851f125: fix bin
+
 ## 0.0.3
 
 ### Patch Changes
