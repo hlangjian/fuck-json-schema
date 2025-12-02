@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.8
+
+### Patch Changes
+
+- 371e1be: keep 'template/.gitignore'
+
 ## 0.1.7
 
 ### Patch Changes
