@@ -53,7 +53,7 @@ export async function handle(this: CommandContext, flags: Flags, name?: string) 
         packages: [
             '@types/node@latest',
             'typescript@latest',
-            'vite-tsconfig-pths@latest',
+            'vite-tsconfig-paths@latest',
             'vite@latest',
         ]
     })
