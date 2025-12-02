@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.0
+
+### Minor Changes
+
+- 29867c2: first minor version
+
 ## 0.0.8
 
 ### Patch Changes
