@@ -16,10 +16,10 @@
     "devDependencies": {
         "@types/node": "^24.10.1",
         "tsup": "^8.5.1",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "utils": "workspace:*"
     },
     "dependencies": {
-        "utils": "workspace:*",
         "@huanglangjian/json-schema-generator": "workspace:*",
         "@huanglangjian/schema": "workspace:*",
         "fast-deep-equal": "^3.1.3"
