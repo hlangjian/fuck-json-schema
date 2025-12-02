@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.6
+
+### Patch Changes
+
+- 918721b: remove install confirm
+
 ## 0.1.5
 
 ### Patch Changes
