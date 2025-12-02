@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.0.7
+
+### Patch Changes
+
+- 187750a: fix template folder name
+
 ## 0.0.6
 
 ### Patch Changes
