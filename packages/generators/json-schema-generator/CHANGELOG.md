@@ -1,5 +1,11 @@
 # @huanglangjian/json-schema-generator
 
+## 0.1.1
+
+### Patch Changes
+
+- 4349bc6: refact create-specs
+
 ## 0.1.0
 
 ### Minor Changes
