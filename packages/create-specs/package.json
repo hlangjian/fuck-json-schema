@@ -9,9 +9,7 @@
     "files": [
         "dist"
     ],
-    "bin": {
-        "create-specs": "./dist/index.js"
-    },
+    "bin": "./dist/index.js",
     "scripts": {
         "build": "tsup",
         "dev": "tsup --watch"
