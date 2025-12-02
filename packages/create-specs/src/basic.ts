@@ -24,7 +24,7 @@ export async function handle(this: CommandContext, flags: Flags) {
 
     const templatePath = getTemplatePath(template)
 
-    confirmContinue()
+    await confirmContinue()
 
     await cp(templatePath, outputPath)
 }
