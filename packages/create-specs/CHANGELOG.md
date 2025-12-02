@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.4
+
+### Patch Changes
+
+- ba9db61: fix 'dev' argument
+
 ## 0.1.3
 
 ### Patch Changes
