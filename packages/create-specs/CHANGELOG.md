@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.7
+
+### Patch Changes
+
+- 4bc31ce: fix 'git init'
+
 ## 0.1.6
 
 ### Patch Changes
