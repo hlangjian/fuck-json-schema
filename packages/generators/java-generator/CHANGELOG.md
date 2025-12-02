@@ -1,5 +1,17 @@
 # @huanglangjian/java-generator
 
+## 0.1.0
+
+### Minor Changes
+
+- 29867c2: first minor version
+
+### Patch Changes
+
+- Updated dependencies [29867c2]
+  - @huanglangjian/generic-generator@0.1.0
+  - @huanglangjian/schema@0.2.0
+
 ## 0.0.4
 
 ### Patch Changes
