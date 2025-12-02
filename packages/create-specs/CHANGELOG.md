@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.0.6
+
+### Patch Changes
+
+- 3ec964e: bundle utils
+
 ## 0.0.5
 
 ### Patch Changes

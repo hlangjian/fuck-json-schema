@@ -1,5 +1,13 @@
 # @huanglangjian/json-schema-generator
 
+## 0.0.4
+
+### Patch Changes
+
+- 3ec964e: bundle utils
+- Updated dependencies [3ec964e]
+  - @huanglangjian/schema@0.1.7
+
 ## 0.0.3
 
 ### Patch Changes

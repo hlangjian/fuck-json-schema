@@ -1,5 +1,14 @@
 # @huanglangjian/java-generator
 
+## 0.0.4
+
+### Patch Changes
+
+- 3ec964e: bundle utils
+- Updated dependencies [3ec964e]
+  - @huanglangjian/generic-generator@0.0.4
+  - @huanglangjian/schema@0.1.7
+
 ## 0.0.3
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @huanglangjian/schema
 
+## 0.1.7
+
+### Patch Changes
+
+- 3ec964e: bundle utils
+
 ## 0.1.6
 
 ### Patch Changes
