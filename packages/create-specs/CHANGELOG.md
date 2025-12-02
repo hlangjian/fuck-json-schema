@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.3
+
+### Patch Changes
+
+- 39804d1: remove 'save-only'
+
 ## 0.1.2
 
 ### Patch Changes
