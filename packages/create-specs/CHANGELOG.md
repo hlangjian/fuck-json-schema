@@ -1,5 +1,13 @@
 # @huanglangjian/create-specs
 
+## 0.0.5
+
+### Patch Changes
+
+- 6e2bd30: add build step to ci
+- Updated dependencies [6e2bd30]
+  - utils@0.0.3
+
 ## 0.0.4
 
 ### Patch Changes
