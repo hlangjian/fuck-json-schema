@@ -60,16 +60,6 @@ export async function handle(this: CommandContext, flags: Flags, name?: string) 
 
     await executeCommand({ cwd: outputPath, ...installDevDependencies, shell: true })
 
-    const shouldInstall = await confirm({
-        message: 'Install dependencies?',
-        defaultValue: true,
-    })
-
-    if (shouldInstall) {
-        const command = getInstallCommand()
-        await executeCommand({ cwd: outputPath, ...command, shell: true })
-    }
-
     const useGit = flags.useGit ?? await confirm({
         message: 'Use git?',
         defaultValue: true,
