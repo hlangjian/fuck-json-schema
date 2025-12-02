@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.0.8
+
+### Patch Changes
+
+- 75eac16: fix copy template folder
+
 ## 0.0.7
 
 ### Patch Changes
