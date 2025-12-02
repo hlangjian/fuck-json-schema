@@ -26,7 +26,7 @@ export async function handle(this: CommandContext, flags: Flags) {
 
     await confirmContinue()
 
-    await cp(templatePath, outputPath)
+    await cp(templatePath, outputPath, { recursive: true })
 }
 
 export const rootCommand = buildCommand({
