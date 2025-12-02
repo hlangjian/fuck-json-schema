@@ -66,7 +66,7 @@ export async function handle(this: CommandContext, flags: Flags, name?: string) 
     })
 
     if (useGit) {
-        await executeCommand({ cwd: outputPath, command: 'git', args: ['--init'], shell: true })
+        await executeCommand({ cwd: outputPath, command: 'git', args: ['init'], shell: true })
     }
 }
 
