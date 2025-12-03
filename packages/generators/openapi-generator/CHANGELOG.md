@@ -1,5 +1,14 @@
 # @huanglangjian/openapi-generator
 
+## 0.1.2
+
+### Patch Changes
+
+- 143580d: init
+- Updated dependencies [143580d]
+  - @huanglangjian/json-schema-generator@0.1.2
+  - @huanglangjian/schema@0.2.1
+
 ## 0.1.1
 
 ### Patch Changes

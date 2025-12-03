@@ -1,5 +1,11 @@
 # @huanglangjian/create-specs
 
+## 0.1.10
+
+### Patch Changes
+
+- 143580d: init
+
 ## 0.1.9
 
 ### Patch Changes

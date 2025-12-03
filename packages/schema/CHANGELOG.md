@@ -1,5 +1,11 @@
 # @huanglangjian/schema
 
+## 0.2.1
+
+### Patch Changes
+
+- 143580d: init
+
 ## 0.2.0
 
 ### Minor Changes
