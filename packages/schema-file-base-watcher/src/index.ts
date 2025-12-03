@@ -1,7 +1,7 @@
 import watcher from '@parcel/watcher'
 import micromatch from 'micromatch'
 import { outputFile } from '../../utils/dist'
-import path, { normalize, posix, join, relative, resolve, dirname } from 'pathe'
+import path, { normalize, posix, join, relative, resolve, dirname, sep } from 'pathe'
 import { glob } from 'tinyglobby'
 import { log } from '@clack/prompts'
 import type { Plugin as VitePlugin } from 'vite'
@@ -78,7 +78,7 @@ async function generate(options: { relativePaths: Set<string>, cwd: string, gene
             : removeExtension(relative(dirname(generateFile), path))
         )
 
-        const moduleId = removeExtension(relative(specsRoot, path))
+        const moduleId = removeExtension(relative(specsRoot, path)).replace(sep, '.')
 
         moduleLines.push(`"${moduleId}": await import('${importPath}')`)
     }
