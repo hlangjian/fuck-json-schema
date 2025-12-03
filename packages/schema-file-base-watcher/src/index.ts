@@ -78,7 +78,7 @@ async function generate(options: { relativePaths: Set<string>, cwd: string, gene
             : removeExtension(relative(dirname(generateFile), path))
         )
 
-        const moduleId = removeExtension(relative(specsRoot, path)).replace(sep, '.')
+        const moduleId = removeExtension(relative(specsRoot, path)).replaceAll(sep, '.')
 
         moduleLines.push(`"${moduleId}": await import('${importPath}')`)
     }
