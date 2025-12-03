@@ -1,5 +1,15 @@
 # @huanglangjian/java-springboot-generator
 
+## 0.1.2
+
+### Patch Changes
+
+- 143580d: init
+- Updated dependencies [143580d]
+  - @huanglangjian/generic-generator@0.1.2
+  - @huanglangjian/java-generator@0.1.2
+  - @huanglangjian/schema@0.2.1
+
 ## 0.1.1
 
 ### Patch Changes
