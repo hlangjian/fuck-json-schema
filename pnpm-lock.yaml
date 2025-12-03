@@ -204,9 +204,6 @@ importers:
       tinyglobby:
         specifier: ^0.2.15
         version: 0.2.15
-      vite:
-        specifier: ^7.2.6
-        version: 7.2.6(@types/node@24.10.1)(tsx@4.21.0)(yaml@2.8.0)
     devDependencies:
       '@types/node':
         specifier: ^24.10.1
@@ -220,6 +217,10 @@ importers:
       utils:
         specifier: workspace:*
         version: link:../utils
+    optionalDependencies:
+      vite:
+        specifier: ^7.2.6
+        version: 7.2.6(@types/node@24.10.1)(tsx@4.21.0)(yaml@2.8.0)
 
   packages/test:
     dependencies:
@@ -2338,6 +2339,7 @@ snapshots:
       '@esbuild/win32-arm64': 0.25.12
       '@esbuild/win32-ia32': 0.25.12
       '@esbuild/win32-x64': 0.25.12
+    optional: true
 
   esbuild@0.27.0:
     optionalDependencies:
@@ -2549,7 +2551,8 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nanoid@3.3.11: {}
+  nanoid@3.3.11:
+    optional: true
 
   node-addon-api@7.1.1: {}
 
@@ -2622,6 +2625,7 @@ snapshots:
       nanoid: 3.3.11
       picocolors: 1.1.1
       source-map-js: 1.2.1
+    optional: true
 
   prettier-plugin-java@2.7.7(prettier@3.7.3):
     dependencies:
@@ -2709,7 +2713,8 @@ snapshots:
 
   slash@3.0.0: {}
 
-  source-map-js@1.2.1: {}
+  source-map-js@1.2.1:
+    optional: true
 
   source-map@0.7.6: {}
 
@@ -2860,6 +2865,7 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.21.0
       yaml: 2.8.0
+    optional: true
 
   which-module@2.0.1: {}
 
