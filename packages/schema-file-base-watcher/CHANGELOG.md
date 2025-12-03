@@ -1,5 +1,11 @@
 # @huanglangjian/schema-file-base-watcher
 
+## 0.1.2
+
+### Patch Changes
+
+- 1641902: fix
+
 ## 0.1.1
 
 ### Patch Changes
