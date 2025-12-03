@@ -1,0 +1,34 @@
+{
+    "name": "@huanglangjian/schema-file-base-watcher",
+    "private": false,
+    "version": "0.0.1",
+    "type": "module",
+    "main": "./dist/index.js",
+    "exports": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch"
+    },
+    "devDependencies": {
+        "@types/node": "^24.10.1",
+        "tsup": "^8.5.1",
+        "typescript": "^5.9.3",
+        "utils": "workspace:*"
+    },
+    "dependencies": {
+        "@clack/prompts": "^0.11.0",
+        "@huanglangjian/schema": "workspace:*",
+        "@parcel/watcher": "^2.5.1",
+        "@types/micromatch": "^4.0.10",
+        "micromatch": "^4.0.8",
+        "pathe": "^2.0.3",
+        "tinyglobby": "^0.2.15"
+    },
+    "optionalDependencies": {
+        "vite": "^7.2.6"
+    }
+}

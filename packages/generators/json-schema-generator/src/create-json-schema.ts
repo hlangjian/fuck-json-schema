@@ -81,7 +81,7 @@ export function createJsonSchema(options: CreateJsonSchemaOptions): JsonSchemaOb
         }
 
         if (model.kind === 'record') {
-            const { kind, id, properties, ...rest } = model
+            const { kind, properties, ...rest } = model
 
             const propertiesMap = new Map<string, JsonSchemaObject>()
 
@@ -93,7 +93,7 @@ export function createJsonSchema(options: CreateJsonSchemaOptions): JsonSchemaOb
         }
 
         if (model.kind === 'tagged-union') {
-            const { id, variants, ...rest } = model
+            const { variants, ...rest } = model
             const variantsMap = new Map<string, JsonSchemaObject>()
 
             for (const [name, variant] of Object.entries(variants)) {

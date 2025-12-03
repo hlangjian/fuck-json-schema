@@ -1,0 +1,13 @@
+{
+    "name": "test",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "tsx main.ts"
+    },
+    "dependencies": {
+        "tsx": "^4.21.0",
+        "@huanglangjian/schema-file-base-watcher": "workspace:*",
+        "@huanglangjian/schema": "workspace:*"
+    }
+}

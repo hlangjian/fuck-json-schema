@@ -35,3 +35,7 @@ export * from './security'
 export * from './models/validations'
 
 export * from './net-types'
+
+export * from './models/is-model'
+
+export * from './api/is-route-model'

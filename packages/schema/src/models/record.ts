@@ -11,8 +11,6 @@ export interface RecordModelOptions<T extends { [key: string]: Model }> {
 
     exmaples?: InferProperties<T>[]
 
-    id: string
-
     properties: T
 }
 

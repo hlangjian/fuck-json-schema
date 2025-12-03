@@ -14,14 +14,16 @@ export async function generateJava(options: GeneratorContextOptions): Promise<Ma
 
     await context.travel(async model => {
         if (model.kind === 'record') {
+            const modelId = context.requireId(model)
             const code = generateRecordModel(model, context)
-            const path = getPath(model.id, context)
+            const path = getPath(modelId, context)
             files.set(path, code)
         }
 
         else if (model.kind === 'tagged-union') {
+            const modelId = context.requireId(model)
             const code = generateTaggedUnionModel(model, context)
-            const path = getPath(model.id, context)
+            const path = getPath(modelId, context)
             files.set(path, code)
         }
     })
@@ -37,9 +39,11 @@ export async function generateJava(options: GeneratorContextOptions): Promise<Ma
 
 export function generateRecordModel(model: RecordModel, context: GeneratorContext | ModuleGeneratorContext): string {
 
-    const module = 'createModule' in context ? context.createModule(model.id) : context
+    const modelId = context.requireId(model)
 
-    const { packageId, simpleName } = resolveId(model.id, context)
+    const module = 'createModule' in context ? context.createModule(modelId) : context
+
+    const { packageId, simpleName } = resolveId(modelId, context)
 
     const requiredParameters: { name: string, property: Model }[] = []
 
@@ -162,9 +166,11 @@ export function generateRecordModel(model: RecordModel, context: GeneratorContex
 
 export function generateTaggedUnionModel(model: TaggedUnionModel, context: GeneratorContext | ModuleGeneratorContext): string {
 
-    const module = 'createModule' in context ? context.createModule(model.id) : context
+    const modelId = context.requireId(model)
 
-    const { packageId, simpleName } = resolveId(model.id, context)
+    const module = 'createModule' in context ? context.createModule(modelId) : context
+
+    const { packageId, simpleName } = resolveId(modelId, context)
 
     const permits = Object.keys(model.variants).map(name => {
         return `${simpleName}.${name}`
@@ -199,10 +205,7 @@ export function generateTaggedUnionModel(model: TaggedUnionModel, context: Gener
 }
 
 export function resolveId(id: string, context: GeneratorContext | ModuleGeneratorContext) {
-    const parts = [
-        ...context.baseNamespace.split('.'),
-        ...id.split('.')
-    ]
+    const parts = id.split('.')
 
     const realId = parts.join('.')
 
@@ -215,10 +218,7 @@ export function resolveId(id: string, context: GeneratorContext | ModuleGenerato
 
 export function getPath(id: string, context: GeneratorContext): string {
 
-    const parts = [
-        ...context.baseNamespace.split('.'),
-        ...id.split('.')
-    ]
+    const parts = id.split('.')
 
     const path = parts.join('/') + '.java'
 
@@ -290,10 +290,10 @@ export const getModelSignature = (model: Model, context: ModuleGeneratorContext)
     }
 
     if (model.kind === 'record' || model.kind === 'tagged-union') {
-        const parts = [
-            ...context.baseNamespace.split('.'),
-            ...model.id.split('.'),
-        ]
+
+        const modelId = context.requireId(model)
+
+        const parts = modelId.split('.')
 
         return parts.join('.')
     }
@@ -422,7 +422,9 @@ export function generateInstanceCode(model: Model, value: any | undefined, conte
     if (model.kind === 'record') {
         if (typeof value !== 'object') throw Error()
 
-        const { realId } = resolveId(model.id, context)
+        const modelId = context.requireId(model)
+
+        const { realId } = resolveId(modelId, context)
 
         const requiredProperties: { name: string, property: Model }[] = []
 

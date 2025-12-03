@@ -5,7 +5,6 @@ import type { ContentTypes, HttpMethod } from "../net-types"
 import type { SecurityModel } from "../security"
 
 export interface RoutesModel {
-    id: string
     kind: 'routes'
     path: string
     pathParams: { [key: string]: Model }
@@ -16,7 +15,6 @@ export interface RoutesModel {
 }
 
 export interface RouterOptions<T extends string> {
-    id: string
     pathParams?: { [key in ExtractPathParams<T>]?: Model }
     operations: { [key: string]: OperationModel }
     summary?: string

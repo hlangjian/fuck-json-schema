@@ -1,12 +1,11 @@
-import { type HttpMethod, type Model, type RoutesModel, type SecurityModel, type SecurityProvider } from "@huanglangjian/schema"
+import { isModel, isRoutesModel, type HttpMethod, type Model, type RoutesModel, type SecurityModel, type SecurityProvider } from "@huanglangjian/schema"
 import type { InfoObject, OpenAPIObject, OperationObject, ParameterObjectAsContent, PathItemObject, PathsObject, ResponseObject, SecurityRequirementObject, SecuritySchemeObject, ServerObject, TagObject } from "./openapi-schema"
 import { createJsonSchema, type JsonSchemaObject } from '@huanglangjian/json-schema-generator'
-import equal from "fast-deep-equal"
 import { normalizePath, deepMergeAll } from "utils"
 
 export interface CreateOpenapiOptional {
     info: InfoObject
-    routes?: RoutesModel[]
+    models: Map<string, Model | RoutesModel>
     servers?: ServerObject[]
     tags?: TagObject[]
     securities?: { [key: string]: SecurityProvider }
@@ -15,13 +14,44 @@ export interface CreateOpenapiOptional {
 
 export function createOpenapi(optional: CreateOpenapiOptional): OpenAPIObject {
 
-    const { info, routes = [], servers, tags: externalTags = [], securities = {}, sortModel } = optional
+    const { info, models: _models = new Map<string, Model | RoutesModel>(), servers, tags: externalTags = [], securities = {}, sortModel } = optional
 
     const tags: TagObject[] = [...externalTags]
 
-    for (const route of routes) if (route.summary != null) tags.push({ name: route.summary, description: route.description })
+    const routes: RoutesModel[] = []
 
-    const models = getModels(routes)
+    const models: { [key: string]: Model } = {}
+
+    const modelIdMap = new Map<Model | RoutesModel, string>()
+
+    for (const [key, value] of _models) {
+        if (isRoutesModel(value)) {
+            routes.push(value)
+            modelIdMap.set(value, key)
+        }
+
+        if (isModel(value)) {
+            modelIdMap.set(value, key)
+            if (value.kind === 'record' || value.kind === 'tagged-union') {
+                Object.defineProperty(models, key, {
+                    value,
+                    enumerable: true
+                })
+            }
+        }
+    }
+
+    const requireId = (model: Model | RoutesModel) => {
+        const id = modelIdMap.get(model)
+        if (id == null) throw Error('Unable to locate the model by its ID. Please make sure the model is defined and properly exported.')
+        return id
+    }
+
+    const getId = (model: Model) => {
+        return modelIdMap.get(model)
+    }
+
+    for (const route of routes) if (route.summary != null) tags.push({ name: route.summary, description: route.description })
 
     const schemas = new Map<string, JsonSchemaObject>()
 
@@ -29,13 +59,15 @@ export function createOpenapi(optional: CreateOpenapiOptional): OpenAPIObject {
 
     const parseJsonSchema = (model: Model): JsonSchemaObject => {
 
-        if ('id' in model && schemas.has(model.id)) return schemas.get(model.id)!
+        const modelId = getId(model)
+
+        if (modelId != null && schemas.has(modelId)) return schemas.get(modelId)!
 
         const schema = createJsonSchema({ model, defines: models, refPrefix: '#/components/schemas/' })
 
         const { $defs, ...rest } = schema
 
-        if ('id' in model) schemas.set(model.id, rest)
+        if (modelId != null) schemas.set(modelId, rest)
 
         if ('base' in model) parseJsonSchema(model.base)
 
@@ -101,65 +133,6 @@ export function createOpenapi(optional: CreateOpenapiOptional): OpenAPIObject {
         tags,
         servers,
     }
-}
-
-function getModels(routes: RoutesModel[]): { [key: string]: Model } {
-    const map = new Map<string, Model>()
-
-    const resolve = (model: Model | undefined | null) => {
-        if (model == null) return
-
-        if (model.kind === 'record' || model.kind === 'tagged-union') {
-            const cache = map.get(model.id)
-
-            if (cache != null && model !== cache && !equal(model, cache)) {
-                console.warn(`duplicate model id '${model.id}'`)
-                return
-            }
-
-            map.set(model.id, model)
-
-            if (model.kind === 'record') for (const property of Object.values(model.properties)) {
-                resolve(property)
-            }
-
-            else if (model.kind === 'tagged-union') for (const variant of Object.values(model.variants)) {
-                resolve(variant)
-            }
-
-            // else if (model.kind === 'enums') resolve(model.base)
-
-            return
-        }
-
-        if ('base' in model) return resolve(model.base)
-    }
-
-    for (const route of routes) {
-
-        for (const operation of Object.values(route.operations)) {
-
-            if (operation.pathParams) for (const parameter of Object.values(operation.pathParams)) {
-                resolve(parameter)
-            }
-
-            if (operation.queryParams) for (const parameter of Object.values(operation.queryParams)) {
-                resolve(parameter)
-            }
-
-            if (operation.headerParams) for (const parameter of Object.values(operation.headerParams)) {
-                resolve(parameter)
-            }
-
-            for (const response of Object.values(operation.responses)) {
-                if (response.headers) for (const parameter of Object.values(response.headers)) {
-                    resolve(parameter)
-                }
-            }
-        }
-    }
-
-    return Object.fromEntries(map)
 }
 
 function parseRoutes(

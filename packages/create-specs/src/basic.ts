@@ -42,6 +42,7 @@ export async function handle(this: CommandContext, flags: Flags, name?: string) 
             '@huanglangjian/schema@latest',
             '@huanglangjian/json-schema-generator@latest',
             '@huanglangjian/openapi-generator@latest',
+            '@huanglangjian/schema-file-base-watcher@latest',
             '@scalar/api-reference@latest',
         ]
     })

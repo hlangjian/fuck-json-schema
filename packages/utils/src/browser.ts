@@ -63,7 +63,7 @@ export function upperFirst(text: string): string {
 export function trimMargin(strings: TemplateStringsArray, ...values: any[]) {
     const full = strings
         .map((s, i) => s + (i < values.length ? values[i] : ''))
-        .join('');
+        .join('')
 
     return full
         .split('\n')

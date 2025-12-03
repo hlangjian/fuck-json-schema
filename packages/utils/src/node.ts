@@ -1,7 +1,8 @@
 import { mkdir, writeFile } from "fs/promises"
-import { dirname } from "path"
+import { dirname, normalize } from "path"
 
 export async function outputFile(path: string, text: string) {
-    await mkdir(dirname(path), { recursive: true })
-    await writeFile(path, text)
+    const normalizePath = normalize(path)
+    await mkdir(dirname(normalizePath), { recursive: true })
+    await writeFile(normalizePath, text)
 }

@@ -1,17 +1,12 @@
 import * as Scalar from '@scalar/api-reference'
 import '@scalar/api-reference/style.css'
-import { BookRoute } from './specs/book'
 import { createOpenapi } from '@huanglangjian/openapi-generator'
-import { application } from '@huanglangjian/schema'
-
-const app = application({
-    routes: [BookRoute]
-})
+import { models } from './models.gen'
 
 const openapi = createOpenapi({
-    routes: app.routes,
+    models,
     info: {
-        title: 'Specs example',
+        title: 'Example',
         version: 'v1'
     }
 })

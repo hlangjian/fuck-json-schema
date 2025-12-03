@@ -11,23 +11,26 @@ export async function generateSpringboot(options: GeneratorContextOptions): Prom
 
     await context.travel(async model => {
         if (model.kind === 'record') {
+            const modelId = context.requireId(model)
             const code = generateRecordModel(model, context)
-            const path = getPath(model.id, context)
+            const path = getPath(modelId, context)
             files.set(path, code)
         }
 
         else if (model.kind === 'tagged-union') {
+            const modelId = context.requireId(model)
             const code = generateTaggedUnionModel(model, context)
-            const path = getPath(model.id, context)
+            const path = getPath(modelId, context)
             files.set(path, code)
         }
 
         else {
+            const modelId = context.requireId(model)
             const code = generateSpringbootRouteModel(model, context)
-            const path = getPath(model.id, context)
+            const path = getPath(modelId, context)
 
             const controllerCode = generateSpringbootController(model, context)
-            const controllerPath = getPath(model.id + 'Controller', context)
+            const controllerPath = getPath(modelId + 'Controller', context)
 
             files.set(path, code)
             files.set(controllerPath, controllerCode)
@@ -44,9 +47,12 @@ export async function generateSpringboot(options: GeneratorContextOptions): Prom
 }
 
 export function generateSpringbootRouteModel(model: RoutesModel, context: GeneratorContext): string {
-    const { packageId, simpleName } = resolveId(model.id, context)
 
-    const module = context.createModule(model.id)
+    const modelId = context.requireId(model)
+
+    const { packageId, simpleName } = resolveId(modelId, context)
+
+    const module = context.createModule(modelId)
 
     const interfaceOperationDeclarations: string[] = []
 
@@ -103,7 +109,7 @@ export function generateSpringbootRouteModel(model: RoutesModel, context: Genera
 
 function getOperationResponseModel(name: string, operation: OperationModel, context: ModuleGeneratorContext): string {
 
-    const variants: RecordModel[] = []
+    const variants = new Map<string, RecordModel>()
 
     for (const [name, response] of Object.entries(operation.responses)) {
 
@@ -117,15 +123,18 @@ function getOperationResponseModel(name: string, operation: OperationModel, cont
             properties.set('header' + upperFirst(headerName), header)
         }
 
-        variants.push(record({
-            id: name,
-            properties: Object.fromEntries(properties),
-        }))
+        const variantModel = record({
+            properties: Object.fromEntries(properties)
+        })
+
+        context.addModel(name, variantModel)
+
+        variants.set(name, variantModel)
     }
 
-    const variantCodes = variants.map(o => generateRecordModel(o, context))
+    const variantCodes = [...variants.entries()].map(o => generateRecordModel(o[1], context))
 
-    const permits = variantCodes.length === 0 ? '' : 'permits ' + variants.map(o => `${name}Response.${o.id}`)
+    const permits = variantCodes.length === 0 ? '' : 'permits ' + [...variants.entries()].map(o => `${name}Response.${o[0]}`)
 
     const variantBodies: string[] = []
 
@@ -152,9 +161,11 @@ function getOperationResponseModel(name: string, operation: OperationModel, cont
 
 function generateSpringbootController(route: RoutesModel, context: GeneratorContext | ModuleGeneratorContext): string {
 
-    const { packageId, simpleName } = resolveId(route.id, context)
+    const routeId = context.requireId(route)
 
-    const module = 'dependsOn' in context ? context : context.createModule(route.id)
+    const { packageId, simpleName } = resolveId(routeId, context)
+
+    const module = 'dependsOn' in context ? context : context.createModule(routeId)
 
     module.dependsOn('org.springframework.web.bind.annotation.RestController')
 

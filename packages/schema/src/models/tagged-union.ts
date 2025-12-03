@@ -6,8 +6,6 @@ export type VariantModel = RecordModel | TaggedUnionModel
 
 export interface TaggedUnionModelOptions<T extends { [key: string]: VariantModel }> {
 
-    id: string
-
     variants: T
 
     title?: string
