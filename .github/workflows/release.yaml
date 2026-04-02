@@ -13,8 +13,7 @@ jobs:
   release:
     if: |
       github.actor != 'github-actions[bot]' && 
-      !contains(github.event.head_commit.message, 'Version Packages') &&
-      !contains(github.event.head_commit.message, 'chore: release')
+      !contains(github.event.head_commit.message, 'Version Packages')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
