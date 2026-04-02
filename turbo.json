@@ -1,38 +1,15 @@
 {
-    "$schema": "https://turborepo.com/schema.json",
-    "ui": "tui",
-    "tasks": {
-        "dev": {
-            "persistent": true,
-            "cache": false
-        },
-        "codegen": {
-            "inputs": [
-                "src/**/*.ts"
-            ]
-        },
-        "mock": {
-            "persistent": true,
-            "cache": false
-        },
-        "scalar": {
-            "persistent": true,
-            "cache": false
-        },
-        "build": {
-            "inputs": [
-                "package.json",
-                "tsconfig.json",
-                "tsup.config.ts",
-                "public/",
-                "src/**/*.ts"
-            ],
-            "outputs": [
-                "dist/**"
-            ],
-            "dependsOn": [
-                "^build"
-            ]
-        }
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "build": {
+      "inputs": ["package.json", "tsconfig.json", "tsup.config.ts", "public/", "src/**/*.ts"],
+      "outputs": ["dist/**"],
+      "dependsOn": ["^build"]
     }
+  }
 }

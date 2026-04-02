@@ -1,5 +1,5 @@
 ---
-"@huanglangjian/schema-file-base-watcher": patch
+"@huanglangjian/specs": minor
 ---
 
-fix
+clean up and restructure workspace
