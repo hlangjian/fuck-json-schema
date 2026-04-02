@@ -7,7 +7,6 @@
       "cache": false
     },
     "build": {
-      "inputs": ["package.json", "tsconfig.json", "tsup.config.ts", "public/", "src/**/*.ts"],
       "outputs": ["dist/**"],
       "dependsOn": ["^build"]
     }
