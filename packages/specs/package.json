@@ -8,6 +8,9 @@
   "type": "module",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch"
