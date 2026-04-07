@@ -167,14 +167,15 @@ export interface RecordModel<T extends { [key: string]: TypeModels }> extends Ba
   properties: T
 }
 
-type KeyOfOptional<T extends { [key: string]: TypeModels }> = {
-  [key in keyof T]: T[key] extends OptionalModel<TypeModels> ? key : never
+export type KeyOfOptional<T extends { [key: string]: TypeModels }> = {
+  [key in keyof T]: T[key] extends OptionalModel<any> ? key : never
 }[keyof T]
 
-export type InferRecordJsonType<
-  T extends { [key: string]: TypeModels },
-  O extends KeyOfOptional<T> = KeyOfOptional<T>,
-> = Simplify<{ [key in Exclude<keyof T, O>]: InferModelJsonType<T[key]> } & { [key in O]?: InferModelJsonType<T[key]> }>
+/* prettier-ignore */
+export type InferRecordJsonType<T extends { [key: string]: TypeModels },O extends KeyOfOptional<T> = KeyOfOptional<T>> = Simplify<
+  & { [key in Exclude<keyof T, O>]: InferModelJsonType<T[key]> } 
+  & { [key in O]?: InferModelJsonType<T[key]> }
+>
 
 export interface RecordModelOptions<T extends { [key: string]: TypeModels }> extends Omit<RecordModel<T>, "kind"> {}
 
@@ -237,21 +238,21 @@ export interface ErrorModel<Code extends string, Context extends { [key: string]
   kind: "error"
   id: string
   code: Code
-  context?: Context
+  context: Context
 }
 
-export type InferErrorModel<Code extends string, Context extends { [key: string]: TypeModels }> = [Context] extends [
-  never,
-]
-  ? { code: Code }
-  : { code: Code; context: Context }
+/* prettier-ignore */
+export type InferErrorModel<Code extends string, Context extends { [key: string]: TypeModels }> = { 
+  code: Code
+  context: InferRecordJsonType<Context> 
+}
 
 export interface ErrorModelOptions<Code extends string, Context extends { [key: string]: TypeModels }> extends Omit<
   ErrorModel<Code, Context>,
   "kind"
 > {}
 
-export function error<Code extends string, Context extends { [key: string]: TypeModels }>(
+export function error<const Code extends string, Context extends { [key: string]: TypeModels }>(
   options: ErrorModelOptions<Code, Context>,
 ): ErrorModel<Code, Context> {
   return { kind: "error", ...options }
@@ -269,6 +270,35 @@ export function enums<const T extends { [key: string]: string }>(options: EnumsM
   return { kind: "enums", ...options }
 }
 
+export interface TaggedUnionModel<
+  Tag extends string,
+  Variants extends { [key: string]: RecordModel<{ [key in Tag]: LiteralModel<string> }> },
+> extends BasicModel<InferTaggedUnionJsonType<Tag, Variants>> {
+  id: string
+  kind: "tagged-union"
+  tag: Tag
+  variants: Variants
+}
+
+export type InferTaggedUnionJsonType<
+  Tag extends string,
+  Variants extends { [key: string]: RecordModel<{ [key in Tag]: LiteralModel<string> }> },
+> = {
+  [key in keyof Variants]: Variants[key] extends RecordModel<infer R> ? InferRecordJsonType<R> : never
+}[keyof Variants]
+
+export interface TaggedUnionModelOptions<
+  Tag extends string,
+  Variants extends { [key: string]: RecordModel<{ [key in Tag]: LiteralModel<string> }> },
+> extends Omit<TaggedUnionModel<Tag, Variants>, "kind"> {}
+
+export function taggedUnion<
+  const Tag extends string,
+  Variants extends { [key: string]: RecordModel<{ [key in Tag]: LiteralModel<string> }> },
+>(options: TaggedUnionModelOptions<Tag, Variants>): TaggedUnionModel<Tag, Variants> {
+  return { kind: "tagged-union", ...options }
+}
+
 export type TypeModels =
   | Int32Model
   | Int64Model
@@ -283,6 +313,7 @@ export type TypeModels =
   | MapModel<TypeModels>
   | RecordModel<{ [key: string]: TypeModels }>
   | UnionModel<{ [key: string]: TypeModels }>
+  | TaggedUnionModel<string, { [key: string]: any }>
   | DatetimeModel
   | DateModel
   | DurationModel
@@ -290,8 +321,8 @@ export type TypeModels =
   | EnumsModel<{ [key: string]: string }>
 
 /* prettier-ignore */
-export type InferModelJsonType<T> = any extends T
-  ? never
+export type InferModelJsonType<T> = 
+  | any extends T ? never
   : TypeModels extends T ? any
   : T extends Int32Model? number
   : T extends Int64Model? string
@@ -300,11 +331,13 @@ export type InferModelJsonType<T> = any extends T
   : T extends BooleanModel? boolean
   : T extends StringModel? string
   : T extends LiteralModel<infer R>? R
+  : T extends OptionalModel<infer R> ? InferModelJsonType<R> | undefined | null
   : T extends ArrayModel<infer R>? InferModelJsonType<R>[]
   : T extends SetModel<infer R>? InferModelJsonType<R>[]
   : T extends MapModel<infer R>? Record<string, InferModelJsonType<R>>
   : T extends RecordModel<infer R>? InferRecordJsonType<R>
   : T extends UnionModel<infer R>? InferUnionJsonType<R>
+  : T extends TaggedUnionModel<infer Tag, infer Variants> ? InferTaggedUnionJsonType<Tag, Variants>
   : T extends DatetimeModel? string
   : T extends DateModel? string
   : T extends DurationModel? string
@@ -447,6 +480,11 @@ export function generateJsonSchema(options: ModelToJsonSchemaOptions): JsonSchem
           required: [k],
           additionalProperties: false,
         })),
+      })
+
+    case "tagged-union":
+      return convert({
+        oneOf: Object.values(model.variants).map((o) => getReferenceSchema(o)),
       })
 
     case "datetime":

@@ -1,12 +1,12 @@
 export interface JsonSchemaObject
   extends
-  JsonSchemaCore,
-  JsonSchemaApplicator,
-  JsonSchemaUnevaluated,
-  JsonSchemaValidation,
-  JsonSchemaMetaData,
-  JsonSchemaFormat,
-  JsonSchemaContent { }
+    JsonSchemaCore,
+    JsonSchemaApplicator,
+    JsonSchemaUnevaluated,
+    JsonSchemaValidation,
+    JsonSchemaMetaData,
+    JsonSchemaFormat,
+    JsonSchemaContent {}
 
 export type JsonSchema = JsonSchemaObject | boolean | undefined
 

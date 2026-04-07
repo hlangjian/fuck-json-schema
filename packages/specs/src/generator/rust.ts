@@ -67,7 +67,7 @@ function generateRecordCode(model: RecordModel<{ [key: string]: TypeModels }>): 
   } else if (hasFields) {
     code += `#[derive(Serialize)]\npub struct ${structName} {\n`
     structFields.forEach((f) => {
-      code += `    ${f};\n`
+      code += `    ${f},\n`
     })
     code += `}\n`
   } else if (hasConstants) {
@@ -256,7 +256,7 @@ function toUpperSnakeCase(str: string): string {
 export async function formatRust(code: string): Promise<string> {
   try {
     return await format(code, {
-      parser: "rust",
+      parser: "jinx-rust",
       plugins: [PrettierRustPlugin],
     })
   } catch (error) {
