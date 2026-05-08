@@ -275,6 +275,7 @@ function generateRequestBodyObject(content: HttpContentModel): RequestBodyObject
     case "plain-text-content":
     case "json-content":
     case "form-content":
+    case "server-sent-event-content":
       return {
         content: { [content.type]: generateMeidaTypeObject(content) },
       }
@@ -294,12 +295,6 @@ function generateMeidaTypeObject(content: HttpContentModel): MediaTypeObject {
         schema: content.model ? getSchemaReference(content.model) : { type: "string" },
       }
 
-    case "plain-text-stream-content":
-      return {
-        schema: { type: "string", format: "binary" },
-        itemSchema: content.model ? getSchemaReference(content.model) : { type: "string" },
-      }
-
     case "json-content":
       return {
         schema: getSchemaReference(content.model),
@@ -315,6 +310,12 @@ function generateMeidaTypeObject(content: HttpContentModel): MediaTypeObject {
       return {
         schema: { type: "string", format: "binary" },
         itemSchema: { type: "string", format: "binary" },
+      }
+
+    case "server-sent-event-content":
+      return {
+        schema: { type: "string", format: "binary" },
+        itemSchema: content.model ? getSchemaReference(content.model) : { type: "string" },
       }
 
     case "form-content":
@@ -395,19 +396,6 @@ export function json(options: JsonContentOptions): JsonContentModel {
   return { kind: "json-content", ...options }
 }
 
-export interface PlainTextStreamContentModel {
-  kind: "plain-text-stream-content"
-  type: PlainTextLikeContentType
-  model?: StringModel
-  description?: string
-}
-
-export interface PlainTextStreamContentOptions extends Omit<PlainTextStreamContentModel, "kind"> {}
-
-export function plainTextStream(options: PlainTextStreamContentOptions): PlainTextStreamContentModel {
-  return { kind: "plain-text-stream-content", ...options }
-}
-
 export interface JsonStreamContentModel {
   kind: "json-stream-content"
   type: JsonStreamLikeContentType
@@ -453,10 +441,10 @@ export function form<T extends { [key: string]: AllowedHttpValue }>(
 export type HttpContentModel =
   | PlainTextContentModel
   | JsonContentModel
-  | PlainTextStreamContentModel
   | JsonStreamContentModel
   | BinaryStreamContentModel
   | FormContentModel<{ [key: string]: AllowedHttpValue }>
+  | ServerSentEventContentModel
 
 export type PlainTextLikeContentType =
   | (string & {})
@@ -504,3 +492,16 @@ export type BinaryLikeContentType =
   | "video/webm"
 
 export type FormLikeContentType = (string & {}) | "application/x-www-form-urlencoded" | "multipart/form-data"
+
+export interface ServerSentEventContentModel {
+  kind: "server-sent-event-content"
+  type: "text/event-stream"
+  model?: TypeModels
+}
+
+export type ServerSentEventContentOptions = Partial<ServerSentEventContentModel>
+
+export function sse(options?: ServerSentEventContentOptions): ServerSentEventContentModel {
+  const { kind = "server-sent-event-content", type = "text/event-stream", model } = options ?? {}
+  return { kind, type, model }
+}
