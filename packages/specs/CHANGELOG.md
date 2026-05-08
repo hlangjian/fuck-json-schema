@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.4.0
+
+### Minor Changes
+
+- bb460dd: add sse
+
 ## 0.3.1
 
 ### Patch Changes
