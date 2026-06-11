@@ -12,7 +12,7 @@ import { generateTsClient } from "./codegen/ts-client"
 import { apikey, openIdConnect } from "./security"
 import type { SecurityPolicyModel } from "./security"
 import { deployOpenIdConnect } from "./deployment"
-import { array, datetime, int32, record, string } from "./types"
+import { array, datetime, enums, int32, record, set, string, taggedUnion, union } from "./types"
 
 const Warehouse = record({
   id: "Warehouse",
@@ -61,16 +61,78 @@ const ErrorResponse = record({
   required: ["message"],
 })
 
-// ---- Server config JSON Schema demo ----
+// ---- Server config with taggedUnion, union, nested ----
+const PostgresConfig = record({
+  id: "PostgresConfig",
+  properties: {
+    host: string({ description: "PostgreSQL 主机地址" }),
+    port: int32({ description: "PostgreSQL 端口" }),
+    username: string({ description: "数据库用户名" }),
+    password: string({ description: "数据库密码" }),
+    auth: taggedUnion({
+      id: "PostgresAuth",
+      variantKey: "method",
+      payloadKey: "credential",
+      variants: {
+        password: record({
+          id: "AuthPassword",
+          properties: { username: string(), password: string() },
+          required: ["username", "password"],
+        }),
+        cert: record({
+          id: "AuthCert",
+          properties: { certFile: string(), keyFile: string() },
+          required: ["certFile", "keyFile"],
+        }),
+      },
+    }),
+  },
+  required: ["host", "port", "username", "password", "auth"],
+})
+
+const SqliteConfig = record({
+  id: "SqliteConfig",
+  properties: {
+    name: string({ description: "SQLite 数据库文件名" }),
+  },
+  required: ["name"],
+})
+
 const ServerConfig = record({
   id: "ServerConfig",
   title: "服务端配置",
   properties: {
     port: int32({ description: "监听端口" }),
     host: string({ description: "监听地址" }),
-    databaseUrl: string({ description: "数据库连接字符串" }),
+    logLevel: enums({ id: "LogLevel", variants: { debug: "debug", info: "info", warn: "warn", error: "error" } }),
+    tags: array({ base: string(), description: "标签列表" }),
+    allowedPorts: set({ base: int32(), description: "允许的端口集合" }),
+    database: taggedUnion({
+      id: "DatabaseConfig",
+      variantKey: "type",
+      payloadKey: "config",
+      variants: {
+        postgres: PostgresConfig,
+        sqlite: SqliteConfig,
+      },
+    }),
+    cache: union({
+      id: "CacheConfig",
+      variants: {
+        redis: record({
+          id: "RedisCache",
+          properties: { url: string(), prefix: string() },
+          required: ["url"],
+        }),
+        memory: record({
+          id: "MemoryCache",
+          properties: { maxSize: int32(), ttl: int32() },
+          required: ["maxSize"],
+        }),
+      },
+    }),
   },
-  required: ["port", "host", "databaseUrl"],
+  required: ["port", "host", "database"],
 })
 
 const router = {
@@ -211,6 +273,7 @@ console.log("✅ openapi.json")
 // 2. Hono server code
 const honoFiles = generateHonoServer({
   routers: [{ name: "Warehouses", routes: router }],
+  configuration: ServerConfig,
 })
 const honoOutDir = resolve(outDir, "hono-server")
 rmSync(honoOutDir, { recursive: true, force: true })
@@ -233,7 +296,7 @@ for (const [path, content] of Object.entries(clientFiles)) {
 console.log(`✅ api-client (${Object.keys(clientFiles).length} files)`)
 
 // 4. Server config JSON Schema
-const configSchema = mergeJsonSchemas({ ServerConfig })
+const configSchema = mergeJsonSchemas({ ServerConfig, PostgresConfig, SqliteConfig, AuthPassword: record({ id: "AuthPassword", properties: { username: string(), password: string() }, required: ["username", "password"] }), AuthCert: record({ id: "AuthCert", properties: { certFile: string(), keyFile: string() }, required: ["certFile", "keyFile"] }), RedisCache: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, required: ["url"] }), MemoryCache: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, required: ["maxSize"] }) })
 
 writeFileSync(resolve(outDir, "server-config.schema.json"), JSON.stringify(configSchema, null, 2), "utf-8")
 console.log("✅ server-config.schema.json")

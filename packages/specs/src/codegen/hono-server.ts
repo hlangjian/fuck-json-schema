@@ -1,7 +1,7 @@
-import { camelCase, pascalCase } from "text-case"
+import { camelCase, pascalCase, snakeCase } from "text-case"
 
 import type { RouterModel } from "../api"
-import type { Models } from "../types"
+import type { Models, RecordModel } from "../types"
 
 import { collectOperations, collectSchemaMap, resolveNamedRoot } from "./collect"
 import type { OperationDescriptor, SchemaMap } from "./descriptors"
@@ -10,10 +10,11 @@ export interface HonoServerOptions {
   routers: RouterModel[]
   identifier?: (id: string) => string
   namespace?: string
+  configuration?: RecordModel<Record<string, Models>, string>
 }
 
 export function generateHonoServer(options: HonoServerOptions): Record<string, string> {
-  const { routers, identifier = pascalCase, namespace } = options
+  const { routers, identifier = pascalCase, namespace, configuration } = options
   const operations = collectOperations(routers)
   const schemaMap = collectSchemaMap(operations)
 
@@ -26,6 +27,10 @@ export function generateHonoServer(options: HonoServerOptions): Record<string, s
   }
 
   files["index.ts"] = generateIndex(operations, identifier)
+
+  if (configuration) {
+    files["config.ts"] = generateConfig(configuration)
+  }
 
   return files
 }
@@ -357,6 +362,295 @@ function generateIndex(operations: OperationDescriptor[], _identifier: (s: strin
   lines.push("")
 
   return lines.join("\n")
+}
+
+// ---- config.ts ----
+
+interface EnvVar {
+  envName: string
+  zodExpr: string
+}
+
+interface FieldNode {
+  name: string
+  kind: "env" | "record" | "switch"
+  envName?: string
+  childFields?: FieldNode[]
+  switchFnName?: string
+}
+
+interface VariantNode {
+  varName: string
+  resolveFnName: string
+  envVars: EnvVar[]
+  fields: FieldNode[]
+  switches: SwitchNode[]
+}
+
+interface SwitchNode {
+  resolveFnName: string
+  dvEnvName: string
+  dvZodExpr: string
+  variantKey: string
+  payloadKey: string | null
+  variants: VariantNode[]
+}
+
+interface CollectResult {
+  envVars: EnvVar[]
+  fields: FieldNode[]
+  switches: SwitchNode[]
+}
+
+let _switchIdCounter = 0
+
+function generateConfig(config: RecordModel<Record<string, Models>, string>): string {
+  _switchIdCounter = 0
+  const root = collectLevel(config.properties as Record<string, Models>, config.required as string[], "")
+
+  const out: string[] = []
+
+  out.push(`import { createEnv } from "@t3-oss/env-core"`)
+  out.push(`import { z } from "zod"`)
+  out.push("")
+
+  out.push(`const _env = createEnv({`)
+  out.push(`  server: {`)
+  for (const v of root.envVars) {
+    out.push(`    ${v.envName}: ${v.zodExpr},`)
+  }
+  out.push(`  },`)
+  out.push(`  runtimeEnv: process.env,`)
+  out.push(`  emptyStringAsUndefined: true,`)
+  out.push(`})`)
+  out.push("")
+
+  for (const sw of root.switches) {
+    emitSwitch(sw, out)
+  }
+
+  out.push(`export function get${pascalCase(config.id)}() {`)
+  out.push(`  return {`)
+  for (const f of root.fields) {
+    out.push(`    ${f.name}: ${emitFieldExpr(f, "_env")},`)
+  }
+  out.push(`  }`)
+  out.push(`}`)
+  out.push("")
+
+  return out.join("\n")
+}
+
+function emitSwitch(sw: SwitchNode, out: string[]): void {
+  for (const v of sw.variants) {
+    for (const nestedSw of v.switches) {
+      emitSwitch(nestedSw, out)
+    }
+
+    out.push(`function ${v.resolveFnName}() {`)
+    out.push(`  const env = createEnv({`)
+    out.push(`    server: {`)
+    for (const ev of v.envVars) {
+      out.push(`      ${ev.envName}: ${ev.zodExpr},`)
+    }
+    out.push(`    },`)
+    out.push(`    runtimeEnv: process.env,`)
+    out.push(`    emptyStringAsUndefined: true,`)
+    out.push(`  })`)
+    out.push("")
+    out.push(`  return {`)
+    for (const f of v.fields) {
+      out.push(`    ${f.name}: ${emitFieldExpr(f, "env")},`)
+    }
+    out.push(`  }`)
+    out.push(`}`)
+    out.push("")
+  }
+
+  out.push(`function ${sw.resolveFnName}() {`)
+  out.push(`  switch (_env.${sw.dvEnvName}) {`)
+  for (const v of sw.variants) {
+    if (sw.payloadKey != null) {
+      out.push(`    case "${v.varName}": return { ${sw.variantKey}: "${v.varName}" as const, ${sw.payloadKey}: ${v.resolveFnName}() }`)
+    } else {
+      out.push(`    case "${v.varName}": return { type: "${v.varName}" as const, ...${v.resolveFnName}() }`)
+    }
+  }
+  out.push(`  }`)
+  out.push(`}`)
+  out.push("")
+}
+
+function emitFieldExpr(field: FieldNode, envRef: string): string {
+  switch (field.kind) {
+    case "env":
+      return `${envRef}.${field.envName}`
+    case "record":
+      return `{ ${field.childFields!.map((f) => `${f.name}: ${emitFieldExpr(f, envRef)}`).join(", ")} }`
+    case "switch":
+      return `${field.switchFnName}()`
+  }
+}
+
+function collectLevel(
+  properties: Record<string, Models>,
+  required: string[],
+  prefix: string,
+): CollectResult {
+  const envVars: EnvVar[] = []
+  const fields: FieldNode[] = []
+  const switches: SwitchNode[] = []
+
+  for (const [propName, model] of Object.entries(properties)) {
+    const envPrefix = prefix
+      ? `${prefix}_${snakeCase(propName).toUpperCase()}`
+      : snakeCase(propName).toUpperCase()
+
+    switch (model.kind) {
+      case "int32":
+      case "float32":
+      case "float64":
+      case "boolean":
+      case "string":
+      case "datetime":
+      case "date":
+      case "duration":
+      case "literal":
+      case "null":
+        envVars.push({ envName: envPrefix, zodExpr: toZodEnv(model as Models) })
+        fields.push({ name: propName, kind: "env", envName: envPrefix })
+        break
+
+      case "enums":
+        envVars.push({ envName: envPrefix, zodExpr: toZodEnv(model as Models) })
+        fields.push({ name: propName, kind: "env", envName: envPrefix })
+        break
+
+      case "record": {
+        const rec = model as RecordModel<Record<string, Models>, string>
+        const child = collectLevel(rec.properties as Record<string, Models>, rec.required as string[], envPrefix)
+        envVars.push(...child.envVars)
+        switches.push(...child.switches)
+        fields.push({ name: propName, kind: "record", childFields: child.fields })
+        break
+      }
+
+      case "taggedUnion": {
+        const dvZod = `z.enum(${JSON.stringify(Object.keys(model.variants))})`
+        envVars.push({ envName: envPrefix, zodExpr: dvZod })
+
+        const variantKey = model.variantKey as string
+        const payloadKey = model.payloadKey as string
+        const resolveFnName = `_resolve${pascalCase(propName)}`
+
+        const variants: VariantNode[] = []
+        for (const [vKey, vModel] of Object.entries(model.variants)) {
+          const vRec = vModel as RecordModel<Record<string, Models>, string>
+          const child = collectLevel(vRec.properties as Record<string, Models>, vRec.required as string[], envPrefix)
+          variants.push({
+            varName: vKey,
+            resolveFnName: `${resolveFnName}${pascalCase(vKey)}`,
+            envVars: child.envVars,
+            fields: child.fields,
+            switches: child.switches,
+          })
+        }
+
+        switches.push({ resolveFnName, dvEnvName: envPrefix, dvZodExpr: dvZod, variantKey, payloadKey, variants })
+        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName })
+        break
+      }
+
+      case "union": {
+        const dvEnvName = `${envPrefix}_TYPE`
+        const dvZod = `z.enum(${JSON.stringify(Object.keys(model.variants))})`
+        envVars.push({ envName: dvEnvName, zodExpr: dvZod })
+
+        const resolveFnName = `_resolve${pascalCase(propName)}`
+
+        const variants: VariantNode[] = []
+        for (const [vKey, vModel] of Object.entries(model.variants)) {
+          const child = collectVariant(vModel as Models, envPrefix)
+          variants.push({
+            varName: vKey,
+            resolveFnName: `${resolveFnName}${pascalCase(vKey)}`,
+            envVars: child.envVars,
+            fields: child.fields,
+            switches: child.switches,
+          })
+        }
+
+        switches.push({ resolveFnName, dvEnvName, dvZodExpr: dvZod, variantKey: "type", payloadKey: null, variants })
+        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName })
+        break
+      }
+
+      case "array":
+      case "set": {
+        const base = (model as { base: Models }).base
+        if (!isSimpleType(base)) {
+          throw new Error(`unsupported configuration value of kind ${model.kind}<non-simple>, only simple element types are allowed`)
+        }
+        envVars.push({ envName: envPrefix, zodExpr: toZodEnv(model) })
+        fields.push({ name: propName, kind: "env", envName: envPrefix })
+        break
+      }
+
+      case "map":
+        throw new Error("unsupported configuration value of kind map")
+
+      default:
+        envVars.push({ envName: envPrefix, zodExpr: "z.string()" })
+        fields.push({ name: propName, kind: "env", envName: envPrefix })
+    }
+  }
+
+  return { envVars, fields, switches }
+}
+
+function collectVariant(model: Models, prefix: string): CollectResult {
+  if (model.kind === "record") {
+    const rec = model as RecordModel<Record<string, Models>, string>
+    return collectLevel(rec.properties as Record<string, Models>, rec.required as string[], prefix)
+  }
+  const envName = prefix
+  return {
+    envVars: [{ envName, zodExpr: toZodEnv(model) }],
+    fields: [{ name: "value", kind: "env", envName }],
+    switches: [],
+  }
+}
+
+function isSimpleType(model: Models): boolean {
+  return ["int32", "float32", "float64", "boolean", "string", "datetime", "date", "duration", "literal", "enums"].includes(model.kind)
+}
+
+function toZodEnv(model: Models): string {
+  switch (model.kind) {
+    case "int32":    return "z.coerce.number().int()"
+    case "float32":
+    case "float64":  return "z.coerce.number()"
+    case "boolean":  return "z.coerce.boolean()"
+    case "string":   return "z.string()"
+    case "datetime": return "z.string().datetime()"
+    case "date":     return "z.string().date()"
+    case "duration": return "z.string()"
+    case "literal":  return `z.literal(${JSON.stringify(model.value)})`
+    case "null":     return "z.null()"
+    case "enums":    return `z.enum(${JSON.stringify(Object.values(model.variants))})`
+    case "array": {
+      if (!isSimpleType(model.base)) throw new Error("unsupported configuration value of kind array<non-simple>, only simple element types are allowed")
+      return `z.coerce.string().transform(s => s.split(',').filter(Boolean)).pipe(z.array(${toZodEnv(model.base)}))`
+    }
+    case "set": {
+      if (!isSimpleType(model.base)) throw new Error("unsupported configuration value of kind set<non-simple>, only simple element types are allowed")
+      return `z.coerce.string().transform(s => new Set(s.split(',').filter(Boolean))).pipe(z.set(${toZodEnv(model.base)}))`
+    }
+    case "map":
+      throw new Error("unsupported configuration value of kind map")
+    default:
+      return "z.string()"
+  }
 }
 
 function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]> {
