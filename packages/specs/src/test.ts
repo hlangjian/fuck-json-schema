@@ -1,0 +1,247 @@
+import { mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { resolve, dirname } from "node:path"
+import { fileURLToPath } from "node:url"
+
+import type { HttpMethod } from "./api"
+import { binary as binaryResponse, json, route } from "./api"
+import { generateOpenapi } from "./generate-openapi"
+import { collectNamedModels, collectOperations } from "./codegen/collect"
+import { mergeJsonSchemas } from "./codegen/json-schema"
+import { generateHonoServer } from "./codegen/hono-server"
+import { generateTsClient } from "./codegen/ts-client"
+import { apikey, openIdConnect } from "./security"
+import type { SecurityPolicyModel } from "./security"
+import { deployOpenIdConnect } from "./deployment"
+import { array, datetime, int32, record, string } from "./types"
+
+const Warehouse = record({
+  id: "Warehouse",
+  title: "仓库",
+  description: "仓库信息",
+  properties: {
+    id: int32({ description: "仓库ID" }),
+    name: string({ description: "仓库名称" }),
+    location: string({ description: "仓库位置" }),
+    capacity: int32({ description: "最大容量" }),
+    createdAt: datetime({ description: "创建时间" }),
+  },
+  required: ["id", "name", "location", "capacity", "createdAt"],
+})
+
+const CreateWarehouse = record({
+  id: "CreateWarehouse",
+  title: "创建仓库",
+  description: "创建仓库请求体",
+  properties: {
+    name: string({ description: "仓库名称" }),
+    location: string({ description: "仓库位置" }),
+    capacity: int32({ description: "最大容量" }),
+  },
+  required: ["name", "location", "capacity"],
+})
+
+const UpdateWarehouse = record({
+  id: "UpdateWarehouse",
+  title: "更新仓库",
+  description: "更新仓库请求体",
+  properties: {
+    name: string({ description: "仓库名称" }),
+    location: string({ description: "仓库位置" }),
+    capacity: int32({ description: "最大容量" }),
+  },
+  required: ["name", "location", "capacity"],
+})
+
+const ErrorResponse = record({
+  id: "ErrorResponse",
+  title: "错误响应",
+  properties: {
+    message: string({ description: "错误信息" }),
+  },
+  required: ["message"],
+})
+
+// ---- Server config JSON Schema demo ----
+const ServerConfig = record({
+  id: "ServerConfig",
+  title: "服务端配置",
+  properties: {
+    port: int32({ description: "监听端口" }),
+    host: string({ description: "监听地址" }),
+    databaseUrl: string({ description: "数据库连接字符串" }),
+  },
+  required: ["port", "host", "databaseUrl"],
+})
+
+const router = {
+  listWarehouses: route({
+    method: "GET",
+    path: "/warehouses",
+    summary: "获取仓库列表",
+    description: "返回所有仓库的列表",
+    tags: ["Warehouses"],
+    responses: {
+      "200": json({ summary: "仓库列表", body: array({ base: Warehouse }) }),
+    },
+  }),
+
+  getWarehouse: route({
+    method: "GET",
+    path: "/warehouses/{id}",
+    summary: "获取单个仓库",
+    tags: ["Warehouses"],
+    description: "根据ID获取指定仓库",
+    variables: { id: int32({ description: "仓库ID" }) },
+    responses: {
+      "200": json({ summary: "仓库详情", body: Warehouse }),
+      "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+    },
+  }),
+
+  createWarehouse: route({
+    method: "POST",
+    path: "/warehouses",
+    summary: "创建仓库",
+    description: "创建一个新仓库",
+    tags: ["Warehouses"],
+    body: CreateWarehouse,
+    responses: {
+      "201": json({ summary: "创建成功", body: Warehouse }),
+      "400": json({ summary: "请求参数错误", body: ErrorResponse }),
+    },
+  }),
+
+  updateWarehouse: route({
+    method: "PUT",
+    path: "/warehouses/{id}",
+    summary: "更新仓库",
+    tags: ["Warehouses"],
+    description: "更新指定仓库的信息",
+    variables: { id: int32({ description: "仓库ID" }) },
+    body: UpdateWarehouse,
+    responses: {
+      "200": json({ summary: "更新成功", body: Warehouse }),
+      "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+    },
+  }),
+
+  deleteWarehouse: route({
+    method: "DELETE",
+    path: "/warehouses/{id}",
+    summary: "删除仓库",
+    tags: ["Warehouses"],
+    description: "删除指定仓库",
+    variables: { id: int32({ description: "仓库ID" }) },
+    responses: {
+      "204": json({ summary: "删除成功" }),
+      "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+    },
+  }),
+
+  exportWarehouses: route({
+    method: "GET",
+    path: "/warehouses/export",
+    summary: "导出仓库数据",
+    tags: ["Warehouses"],
+    description: "以二进制格式导出所有仓库数据",
+    responses: {
+      "200": binaryResponse({ summary: "导出文件" }),
+    },
+  }),
+}
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const outDir = resolve(__dirname, "..", "output")
+mkdirSync(outDir, { recursive: true })
+
+// Security components
+const apiKeyAuth = apikey({
+  id: "xApiKey",
+  name: "X-API-Key",
+  description: "API Key 认证",
+})
+
+const keycloak = openIdConnect({
+  id: "keycloak",
+  description: "Keycloak OIDC 认证",
+  scopes: ["read:warehouses", "write:warehouses"],
+})
+
+// Security policy
+const methodGetPostPutDelete: HttpMethod[] = ["GET", "POST", "PUT", "DELETE"]
+
+const securityPolicy: SecurityPolicyModel = {
+  name: "default",
+  paths: {
+    "^/warehouses$": {
+      pipeline: [
+        apiKeyAuth.apply(),
+        keycloak.apply("read:warehouses"),
+      ],
+    },
+    "^/warehouses/": {
+      methods: methodGetPostPutDelete,
+      pipeline: [
+        apiKeyAuth.apply(),
+        keycloak.apply("read:warehouses", "write:warehouses"),
+      ],
+    },
+  },
+}
+
+const keycloakDeployment = deployOpenIdConnect({
+  component: keycloak,
+  issuer: "https://keycloak.example.com",
+})
+
+// 1. OpenAPI spec
+const { openapi } = generateOpenapi({
+  info: { title: "Warehouse API", version: "1.0.0", description: "仓库管理 CRUD API" },
+  servers: [{ url: "http://localhost:3000", description: "本地开发服务器" }],
+  routers: [{ name: "Warehouses", routes: router }],
+  security: {
+    policy: securityPolicy,
+    deployments: { keycloak: keycloakDeployment },
+  },
+})
+
+writeFileSync(resolve(outDir, "openapi.json"), JSON.stringify(openapi, null, 2), "utf-8")
+console.log("✅ openapi.json")
+
+// 2. Hono server code
+const honoFiles = generateHonoServer({
+  routers: [{ name: "Warehouses", routes: router }],
+})
+const honoOutDir = resolve(outDir, "hono-server")
+rmSync(honoOutDir, { recursive: true, force: true })
+mkdirSync(honoOutDir, { recursive: true })
+for (const [path, content] of Object.entries(honoFiles)) {
+  writeFileSync(resolve(honoOutDir, path), content, "utf-8")
+}
+console.log(`✅ hono-server (${Object.keys(honoFiles).length} files)`)
+
+// 3. TypeScript client code
+const clientFiles = generateTsClient({
+  routers: [{ name: "Warehouses", routes: router }],
+})
+const clientOutDir = resolve(outDir, "api-client")
+rmSync(clientOutDir, { recursive: true, force: true })
+mkdirSync(clientOutDir, { recursive: true })
+for (const [path, content] of Object.entries(clientFiles)) {
+  writeFileSync(resolve(clientOutDir, path), content, "utf-8")
+}
+console.log(`✅ api-client (${Object.keys(clientFiles).length} files)`)
+
+// 4. Server config JSON Schema
+const configSchema = mergeJsonSchemas({ ServerConfig })
+
+writeFileSync(resolve(outDir, "server-config.schema.json"), JSON.stringify(configSchema, null, 2), "utf-8")
+console.log("✅ server-config.schema.json")
+
+// 5. Codegen model collection demo
+const allModels = [Warehouse, CreateWarehouse, UpdateWarehouse, ErrorResponse]
+const named = collectNamedModels(allModels)
+const ops = collectOperations([{ name: "Warehouses", routes: router }])
+
+console.log(`  → ${named.length} named models collected`)
+console.log(`  → ${ops.length} operations collected`)

@@ -1,0 +1,8 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "oxc.enable.oxlint": true,
+    "yaml.schemas": {
+        "https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json": "lefthook.yaml"
+    },
+}

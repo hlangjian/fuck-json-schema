@@ -57,7 +57,7 @@ export function extractPathParams<T extends string>(path: T): UnionToTuple<Extra
     params.push(match[1])
   }
 
-  return [...new Set(params)] as UnionToTuple<ExtractPathParams<T>>
+  return [...new Set(params)] as unknown as UnionToTuple<ExtractPathParams<T>>
 }
 
 export function arraylify<T>(value?: T | T[]): T[] {
@@ -77,4 +77,8 @@ export function trimMargin(strings: TemplateStringsArray, ...values: any[]) {
     .split("\n")
     .map((o) => o.trimStart())
     .join("\n")
+}
+
+export function lowercase<T extends string>(text: T): Lowercase<T> {
+  return text.toLowerCase() as Lowercase<T>
 }

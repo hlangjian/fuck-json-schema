@@ -1,0 +1,8 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob:
+        - "**/*.{js,jsx,ts,tsx,mjs,mts}"
+      run: pnpm exec oxlint --fix --max-warnings=0 {staged_files}
+      stage_fixed: true
