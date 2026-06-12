@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.8.4
+
+### Patch Changes
+
+- 8dce2e3: Replace @t3-oss/env-core with pure zod + parameterized env for config generation.
+
 ## 0.8.3
 
 ### Patch Changes
