@@ -18,7 +18,8 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
-    "test": "vitest"
+    "test": "vitest",
+    "test:openapi": "tsx src/test.ts"
   },
   "dependencies": {
     "@huanglangjian/specs": "workspace:*",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/node": "^25.9.3",
     "tsdown": "^0.22.2",
+    "tsx": "^4.19.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   }

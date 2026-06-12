@@ -20,7 +20,7 @@
     "dev": "tsdown --watch",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:openapi": "tsx src/test.ts"
+    "test:openapi": "tsx ../specs-ts-codegen/src/test.ts"
   },
   "dependencies": {
     "es-toolkit": "^1.47.0",
@@ -32,7 +32,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@huanglangjian/specs-ts-codegen": "workspace:*",
     "@standard-schema/spec": "^1.1.0",
     "@types/node": "^25.9.3",
     "@vitest/ui": "^4.1.8",
