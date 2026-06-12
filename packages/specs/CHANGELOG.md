@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.8.3
+
+### Patch Changes
+
+- eab3277: Generate router-level handler interfaces and factory functions in mountRoutes, replacing operation-granularity inline handler types.
+
 ## 0.8.2
 
 ### Patch Changes
