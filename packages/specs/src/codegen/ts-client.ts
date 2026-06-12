@@ -132,8 +132,11 @@ function generateClientFn(
   }
   if (allModelImports.length > 0) {
     lines.push(`import { ${allModelImports.join(", ")} } from "../models"`)
-    lines.push("")
   }
+
+  lines.push("")
+  lines.push(`export namespace ${OperationName}Operation {`)
+  lines.push("")
 
   // Request type
   const requestFields: string[] = []
@@ -156,9 +159,9 @@ function generateClientFn(
   }
   requestFields.push("baseUrl?: string")
 
-  lines.push(`export interface ${OperationName}Request {`)
-  for (const field of requestFields) lines.push(`  ${field}`)
-  lines.push(`}`)
+  lines.push(`  export interface Request {`)
+  for (const field of requestFields) lines.push(`    ${field}`)
+  lines.push(`  }`)
   lines.push("")
 
   // Response type
@@ -180,24 +183,26 @@ function generateClientFn(
     const kind = responseKind(status)
     const bodyField = responseBodyField(kind, responseModel)
     if (bodyField != null) {
-      lines.push(`export type ${OperationName}Response = { status: ${status}; ${bodyField} }`)
+      lines.push(`  export type Response = { status: ${status}; ${bodyField} }`)
     } else {
-      lines.push(`export type ${OperationName}Response = { status: ${status} }`)
+      lines.push(`  export type Response = { status: ${status} }`)
     }
   } else {
-    lines.push(`export type ${OperationName}Response =`)
+    lines.push(`  export type Response =`)
     for (const [status, responseModel] of responseEntries) {
       const kind = responseKind(status)
       const bodyField = responseBodyField(kind, responseModel)
-      if (bodyField != null) lines.push(`  | { status: ${status}; ${bodyField} }`)
-      else lines.push(`  | { status: ${status} }`)
+      if (bodyField != null) lines.push(`    | { status: ${status}; ${bodyField} }`)
+      else lines.push(`    | { status: ${status} }`)
     }
   }
+  lines.push("")
+  lines.push(`}`)
   lines.push("")
 
   // Function params
   const hasRequired = hasParams || hasBody
-  const reqParam = hasRequired ? `req: ${OperationName}Request` : `req?: ${OperationName}Request`
+  const reqParam = hasRequired ? `req: ${OperationName}Operation.Request` : `req?: ${OperationName}Operation.Request`
 
   // Return type
   const retType = okModel && !isStreamLike ? toTs(okModel, schemaMap, identifier, namespace) : "Response"
@@ -259,7 +264,7 @@ function generateClientIndex(operations: OperationDescriptor[], _identifier: (s:
     for (const operation of groupOps) {
       const n = camelCase(operation.id)
       const OperationName = pascalCase(operation.id)
-      lines.push(`export { ${n}, type ${OperationName}Request, type ${OperationName}Response } from "./${camelCase(operation.group)}/${n}"`)
+      lines.push(`export { ${n}, ${OperationName}Operation } from "./${camelCase(operation.group)}/${n}"`)
     }
     lines.push("")
   }

@@ -145,7 +145,6 @@ function generateOpFile(
   }
 
   const allImports = [...new Set([...schemaImports, ...typeImports])]
-  lines.push(`import type { Context } from "hono"`)
   if (allImports.length > 0 || schemaImports.length > 0) {
     const parts: string[] = []
     if (typeImports.length > 0) parts.push(typeImports.join(", "))
@@ -180,6 +179,9 @@ function generateOpFile(
     lines.push("")
   }
 
+  lines.push(`export namespace ${OperationName}Operation {`)
+  lines.push("")
+
   // ---- Request interface ----
   const requestFields: string[] = []
   if (hasParams) {
@@ -200,9 +202,9 @@ function generateOpFile(
   if (hasBody) {
     requestFields.push(`body: ${toTs(operation.requestModel!, schemaMap, identifier, namespace)}`)
   }
-  lines.push(`export interface ${OperationName}Request {`)
-  for (const field of requestFields) lines.push(`  ${field}`)
-  lines.push(`}`)
+  lines.push(`  export interface Request {`)
+  for (const field of requestFields) lines.push(`    ${field}`)
+  lines.push(`  }`)
   lines.push("")
 
   // ---- Response discriminated union ----
@@ -224,17 +226,17 @@ function generateOpFile(
     const kind = responseKind(status)
     const bodyField = responseBodyField(kind, responseModel)
     if (bodyField != null) {
-      lines.push(`export type ${OperationName}Response = { status: ${status}; ${bodyField} }`)
+      lines.push(`  export type Response = { status: ${status}; ${bodyField} }`)
     } else {
-      lines.push(`export type ${OperationName}Response = { status: ${status} }`)
+      lines.push(`  export type Response = { status: ${status} }`)
     }
   } else {
-    lines.push(`export type ${OperationName}Response =`)
+    lines.push(`  export type Response =`)
     const parts = responseEntries.map(([status, responseModel]) => {
       const kind = responseKind(status)
       const bodyField = responseBodyField(kind, responseModel)
-      if (bodyField != null) return `  | { status: ${status}; ${bodyField} }`
-      return `  | { status: ${status} }`
+      if (bodyField != null) return `    | { status: ${status}; ${bodyField} }`
+      return `    | { status: ${status} }`
     })
     lines.push(parts.join("\n"))
   }
@@ -242,32 +244,43 @@ function generateOpFile(
 
   // ---- Handler type ----
   if (requestFields.length > 0) {
-    lines.push(`export type ${OperationName}Handler = (req: ${OperationName}Request) => Promise<${OperationName}Response>`)
+    lines.push(`  export type Handler = (req: Request) => Promise<Response>`)
   } else {
-    lines.push(`export type ${OperationName}Handler = () => Promise<${OperationName}Response>`)
+    lines.push(`  export type Handler = () => Promise<Response>`)
   }
+  lines.push(`}`)
   lines.push("")
 
+  if (hasParams) {
+    lines.push(`export const ${operationName}Pattern = new URLPattern({ pathname: "*/${toHonoPath(operation.path).replace(/^\//, "")}" })`)
+    lines.push("")
+  }
+
   // ---- Wrapper function ----
-  lines.push(`export function ${operationName}(handler: ${OperationName}Handler) {`)
+  lines.push(`export function ${operationName}(handler: ${OperationName}Operation.Handler) {`)
   lines.push(`  return {`)
   lines.push(`    method: "${operation.method.toUpperCase()}",`)
   lines.push(`    path: "${toHonoPath(operation.path)}",`)
-  lines.push(`    handler: async (context: Context): Promise<Response> => {`)
+  lines.push(`    handler: async (request: Request, params?: Record<string, string>): Promise<Response> => {`)
 
   const requestArgs: string[] = []
 
+  if (hasQuery) {
+    lines.push(`      const requestUrl = new URL(request.url)`)
+  }
   if (hasParams) {
-    lines.push(`      const params = ${operationName}Params.parse(context.req.param())`)
-    requestArgs.push("params")
+    lines.push(`      const p = ${operationName}Params.parse(`)
+    lines.push(`        params ?? ${operationName}Pattern.exec(request.url)!.pathname.groups`)
+    lines.push(`      )`)
+    requestArgs.push("params: p")
   }
   if (hasQuery) {
-    lines.push(`      const query = ${operationName}Query.parse(context.req.query())`)
+    lines.push(`      const query = ${operationName}Query.parse(Object.fromEntries(requestUrl.searchParams))`)
     requestArgs.push("query")
   }
   if (hasHeaders) {
     const headerParts = Object.keys(operation.headers)
-      .map((key) => `        "${key}": context.req.header("${key}"),`)
+      .map((key) => `        "${key}": request.headers.get("${key}"),`)
     lines.push(`      const headers = ${operationName}Headers.parse({`)
     lines.push(...headerParts)
     lines.push(`      })`)
@@ -275,7 +288,7 @@ function generateOpFile(
   }
   if (hasBody) {
     const schemaName = camelCase((operation.requestModel as any).id) + "Schema"
-    lines.push(`      const body = ${schemaName}.parse(await context.req.json())`)
+    lines.push(`      const body = ${schemaName}.parse(await request.json())`)
     requestArgs.push("body")
   }
 
@@ -317,14 +330,12 @@ function generateOpFile(
 
 function generateIndex(operations: OperationDescriptor[], _identifier: (s: string) => string): string {
   const lines: string[] = []
-  lines.push(`import { Hono } from "hono"`)
   lines.push("")
 
   for (const operation of operations) {
     const operationName = camelCase(operation.id)
     const OperationName = pascalCase(operation.id)
-    lines.push(`import { ${operationName}, type ${OperationName}Handler, type ${OperationName}Request, type ${OperationName}Response } from "./${camelCase(operation.group)}/${operationName}"`)
-    lines.push(`export type { ${OperationName}Handler, ${OperationName}Request, ${OperationName}Response }`)
+    lines.push(`import { ${operationName}, ${OperationName}Operation } from "./${camelCase(operation.group)}/${operationName}"`)
   }
 
   lines.push("")
@@ -336,7 +347,7 @@ function generateIndex(operations: OperationDescriptor[], _identifier: (s: strin
     lines.push(`export interface ${groupPascal}Handlers {`)
     for (const operation of groupOps) {
       const operationName = camelCase(operation.id)
-      lines.push(`  ${operationName}: ${pascalCase(operation.id)}Handler`)
+      lines.push(`  ${operationName}: ${pascalCase(operation.id)}Operation.Handler`)
     }
     lines.push(`}`)
     lines.push("")
@@ -350,25 +361,6 @@ function generateIndex(operations: OperationDescriptor[], _identifier: (s: strin
     lines.push(`}`)
     lines.push("")
   }
-
-  lines.push(`export function mountRoutes(`)
-  lines.push(`  app: Hono,`)
-  lines.push(`  routers: {`)
-
-  for (const [group] of Object.entries(groups)) {
-    const groupPascal = pascalCase(group)
-    lines.push(`    ${camelCase(group)}: ReturnType<typeof create${groupPascal}Router>,`)
-  }
-
-  lines.push(`  },`)
-  lines.push(`) {`)
-
-  for (const [group] of Object.entries(groups)) {
-    lines.push(`  for (const def of routers.${camelCase(group)}) app.on(def.method, def.path, def.handler)`)
-  }
-
-  lines.push(`}`)
-  lines.push("")
 
   return lines.join("\n")
 }
