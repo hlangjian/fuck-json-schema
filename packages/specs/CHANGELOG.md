@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.8.1
+
+### Patch Changes
+
+- a3d8b93: Fix topological sort for generated models to prevent TDZ errors when schemas reference each other out of dependency order.
+
 ## 0.8.0
 
 ### Minor Changes
