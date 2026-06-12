@@ -3,7 +3,7 @@ import { camelCase, pascalCase } from "text-case"
 import type { RouterModel } from "../api"
 import type { Models } from "../types"
 
-import { collectOperations, collectSchemaMap, resolveNamedRoot } from "./collect"
+import { collectOperations, collectSchemaMap, resolveNamedRoot, topologicalSortSchemaMap } from "./collect"
 import type { OperationDescriptor, SchemaMap } from "./descriptors"
 
 export interface TsClientOptions {
@@ -36,7 +36,7 @@ function generateModels(schemaMap: SchemaMap, identifier: (s: string) => string,
   lines.push(`import { z } from "zod"`)
   lines.push("")
 
-  for (const [id, schemaInfo] of schemaMap) {
+  for (const [id, schemaInfo] of topologicalSortSchemaMap(schemaMap)) {
     const schemaName = camelCase(id) + "Schema"
     const tsName = identifier(id)
 

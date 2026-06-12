@@ -234,3 +234,83 @@ export function resolveNamedRoot(m: Models): { id: string } | null {
       return null
   }
 }
+
+function collectDependencies(model: Models, schemaMap: SchemaMap): string[] {
+  const deps: string[] = []
+  const seen = new Set<Models>()
+
+  const walk = (m: Models) => {
+    if (seen.has(m)) return
+    seen.add(m)
+
+    if ("id" in m && schemaMap.has(m.id)) {
+      deps.push(m.id)
+      return
+    }
+
+    if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
+      walk(m.base)
+    } else if (m.kind === "record") {
+      Object.values(m.properties).forEach((v) => walk(v as Models))
+    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+      Object.values(m.variants).forEach((v) => walk(v as Models))
+    }
+  }
+
+  walk(model)
+  return deps
+}
+
+export function topologicalSortSchemaMap(schemaMap: SchemaMap): [string, SchemaInfo][] {
+  const entries: [string, SchemaInfo][] = []
+  const graph = new Map<string, string[]>()
+  const inDegree = new Map<string, number>()
+
+  for (const [id] of schemaMap) {
+    graph.set(id, [])
+    inDegree.set(id, 0)
+  }
+
+  for (const [id, schemaInfo] of schemaMap) {
+    const deps: string[] = []
+    if (schemaInfo.kind === "record" && schemaInfo.fields) {
+      for (const field of schemaInfo.fields) {
+        deps.push(...collectDependencies(field.model, schemaMap))
+      }
+    } else if ((schemaInfo.kind === "union" || schemaInfo.kind === "taggedUnion") && schemaInfo.unionVariants) {
+      for (const variant of Object.values(schemaInfo.unionVariants)) {
+        deps.push(...collectDependencies(variant, schemaMap))
+      }
+    }
+
+    for (const dep of deps) {
+      if (dep !== id && graph.has(dep)) {
+        graph.get(dep)!.push(id)
+        inDegree.set(id, (inDegree.get(id) ?? 0) + 1)
+      }
+    }
+  }
+
+  const queue: string[] = []
+  for (const [id, deg] of inDegree) {
+    if (deg === 0) queue.push(id)
+  }
+
+  while (queue.length > 0) {
+    const id = queue.shift()!
+    entries.push([id, schemaMap.get(id)!])
+    for (const succ of graph.get(id) ?? []) {
+      const newDeg = (inDegree.get(succ) ?? 1) - 1
+      inDegree.set(succ, newDeg)
+      if (newDeg === 0) queue.push(succ)
+    }
+  }
+
+  for (const [id, info] of schemaMap) {
+    if (!entries.some(([eId]) => eId === id)) {
+      entries.push([id, info])
+    }
+  }
+
+  return entries
+}
