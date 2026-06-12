@@ -386,6 +386,7 @@ interface FieldNode {
   envName?: string
   childFields?: FieldNode[]
   switchFnName?: string
+  dvEnvName?: string
 }
 
 interface VariantNode {
@@ -418,18 +419,13 @@ function generateConfig(config: RecordModel<Record<string, Models>, string>): st
 
   const out: string[] = []
 
-  out.push(`import { createEnv } from "@t3-oss/env-core"`)
   out.push(`import { z } from "zod"`)
   out.push("")
 
-  out.push(`const _env = createEnv({`)
-  out.push(`  server: {`)
+  out.push(`const _rootSchema = z.object({`)
   for (const v of root.envVars) {
-    out.push(`    ${v.envName}: ${v.zodExpr},`)
+    out.push(`  ${v.envName}: ${v.zodExpr},`)
   }
-  out.push(`  },`)
-  out.push(`  runtimeEnv: process.env,`)
-  out.push(`  emptyStringAsUndefined: true,`)
   out.push(`})`)
   out.push("")
 
@@ -437,10 +433,11 @@ function generateConfig(config: RecordModel<Record<string, Models>, string>): st
     emitSwitch(sw, out)
   }
 
-  out.push(`export function get${pascalCase(config.id)}() {`)
+  out.push(`export function get${pascalCase(config.id)}(env: Record<string, string | undefined> = process.env) {`)
+  out.push(`  const e = _rootSchema.parse(env)`)
   out.push(`  return {`)
   for (const f of root.fields) {
-    out.push(`    ${f.name}: ${emitFieldExpr(f, "_env")},`)
+    out.push(`    ${f.name}: ${emitFieldExpr(f, "e", "env")},`)
   }
   out.push(`  }`)
   out.push(`}`)
@@ -455,33 +452,29 @@ function emitSwitch(sw: SwitchNode, out: string[]): void {
       emitSwitch(nestedSw, out)
     }
 
-    out.push(`function ${v.resolveFnName}() {`)
-    out.push(`  const env = createEnv({`)
-    out.push(`    server: {`)
+    out.push(`function ${v.resolveFnName}(env: Record<string, string | undefined>) {`)
+    out.push(`  const e = z.object({`)
     for (const ev of v.envVars) {
-      out.push(`      ${ev.envName}: ${ev.zodExpr},`)
+      out.push(`    ${ev.envName}: ${ev.zodExpr},`)
     }
-    out.push(`    },`)
-    out.push(`    runtimeEnv: process.env,`)
-    out.push(`    emptyStringAsUndefined: true,`)
-    out.push(`  })`)
+    out.push(`  }).parse(env)`)
     out.push("")
     out.push(`  return {`)
     for (const f of v.fields) {
-      out.push(`    ${f.name}: ${emitFieldExpr(f, "env")},`)
+      out.push(`    ${f.name}: ${emitFieldExpr(f, "e", "env")},`)
     }
     out.push(`  }`)
     out.push(`}`)
     out.push("")
   }
 
-  out.push(`function ${sw.resolveFnName}() {`)
-  out.push(`  switch (_env.${sw.dvEnvName}) {`)
+  out.push(`function ${sw.resolveFnName}(env: Record<string, string | undefined>, dv: string) {`)
+  out.push(`  switch (dv) {`)
   for (const v of sw.variants) {
     if (sw.discriminator != null) {
-      out.push(`    case "${v.varName}": return ${v.resolveFnName}()`)
+      out.push(`    case "${v.varName}": return ${v.resolveFnName}(env)`)
     } else {
-      out.push(`    case "${v.varName}": return { type: "${v.varName}" as const, ...${v.resolveFnName}() }`)
+      out.push(`    case "${v.varName}": return { type: "${v.varName}" as const, ...${v.resolveFnName}(env) }`)
     }
   }
   out.push(`  }`)
@@ -489,14 +482,14 @@ function emitSwitch(sw: SwitchNode, out: string[]): void {
   out.push("")
 }
 
-function emitFieldExpr(field: FieldNode, envRef: string): string {
+function emitFieldExpr(field: FieldNode, envRef: string, rawEnv: string): string {
   switch (field.kind) {
     case "env":
       return `${envRef}.${field.envName}`
     case "record":
-      return `{ ${field.childFields!.map((f) => `${f.name}: ${emitFieldExpr(f, envRef)}`).join(", ")} }`
+      return `{ ${field.childFields!.map((f) => `${f.name}: ${emitFieldExpr(f, envRef, rawEnv)}`).join(", ")} }`
     case "switch":
-      return `${field.switchFnName}()`
+      return `${field.switchFnName}(${rawEnv}, ${envRef}.${field.dvEnvName})`
   }
 }
 
@@ -563,7 +556,7 @@ function collectLevel(
         }
 
         switches.push({ resolveFnName, dvEnvName: envPrefix, dvZodExpr: dvZod, discriminator: model.discriminator as string, variants })
-        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName })
+        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName, dvEnvName: envPrefix })
         break
       }
 
@@ -587,7 +580,7 @@ function collectLevel(
         }
 
         switches.push({ resolveFnName, dvEnvName, dvZodExpr: dvZod, discriminator: null, variants })
-        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName })
+        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName, dvEnvName })
         break
       }
 
