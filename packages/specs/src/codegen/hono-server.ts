@@ -331,30 +331,40 @@ function generateIndex(operations: OperationDescriptor[], _identifier: (s: strin
 
   const groups = groupBy(operations, (operation) => operation.group)
 
-  lines.push(`export function mountRoutes(`)
-  lines.push(`  app: Hono,`)
-  lines.push(`  handlers: {`)
-
   for (const [group, groupOps] of Object.entries(groups)) {
-    lines.push(`    ${camelCase(group)}: {`)
+    const groupPascal = pascalCase(group)
+    lines.push(`export interface ${groupPascal}Handlers {`)
     for (const operation of groupOps) {
       const operationName = camelCase(operation.id)
-      lines.push(`      ${operationName}: ${pascalCase(operation.id)}Handler,`)
+      lines.push(`  ${operationName}: ${pascalCase(operation.id)}Handler`)
     }
-    lines.push(`    },`)
+    lines.push(`}`)
+    lines.push("")
+    lines.push(`export function create${groupPascal}Router(handlers: ${groupPascal}Handlers) {`)
+    lines.push(`  return [`)
+    for (const operation of groupOps) {
+      const operationName = camelCase(operation.id)
+      lines.push(`    ${operationName}(handlers.${operationName}),`)
+    }
+    lines.push(`  ]`)
+    lines.push(`}`)
+    lines.push("")
+  }
+
+  lines.push(`export function mountRoutes(`)
+  lines.push(`  app: Hono,`)
+  lines.push(`  routers: {`)
+
+  for (const [group] of Object.entries(groups)) {
+    const groupPascal = pascalCase(group)
+    lines.push(`    ${camelCase(group)}: ReturnType<typeof create${groupPascal}Router>,`)
   }
 
   lines.push(`  },`)
   lines.push(`) {`)
 
-  for (const [group, groupOps] of Object.entries(groups)) {
-    lines.push(`  // ── ${group} ──`)
-    for (const operation of groupOps) {
-      const operationName = camelCase(operation.id)
-      lines.push(`  const ${operationName}Def = ${operationName}(handlers.${camelCase(group)}.${operationName})`)
-      lines.push(`  app.on(${operationName}Def.method, ${operationName}Def.path, ${operationName}Def.handler)`)
-    }
-    lines.push("")
+  for (const [group] of Object.entries(groups)) {
+    lines.push(`  for (const def of routers.${camelCase(group)}) app.on(def.method, def.path, def.handler)`)
   }
 
   lines.push(`}`)
