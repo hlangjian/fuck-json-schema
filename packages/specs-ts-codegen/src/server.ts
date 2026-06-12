@@ -1,19 +1,19 @@
+import type { RouterModel, Models, RecordModel } from "@huanglangjian/specs"
+import { collectOperations, collectSchemaMap, resolveNamedRoot } from "@huanglangjian/specs"
+import type { OperationDescriptor, SchemaMap } from "@huanglangjian/specs"
+import { groupBy } from "@huanglangjian/specs"
 import { camelCase, pascalCase, snakeCase } from "text-case"
 
-import type { RouterModel } from "../api"
-import type { Models, RecordModel } from "../types"
+import { generateModels, toZod, toTs, optionalDefault, toHonoPath, contentTypeForKind } from "./shared"
 
-import { collectOperations, collectSchemaMap, resolveNamedRoot, topologicalSortSchemaMap } from "./collect"
-import type { OperationDescriptor, SchemaMap } from "./descriptors"
-
-export interface HonoServerOptions {
+export interface TsServerOptions {
   routers: RouterModel[]
   identifier?: (id: string) => string
   namespace?: string
   configuration?: RecordModel<Record<string, Models>, string>
 }
 
-export function generateHonoServer(options: HonoServerOptions): Record<string, string> {
+export function generateTsServer(options: TsServerOptions): Record<string, string> {
   const { routers, identifier = pascalCase, namespace, configuration } = options
   const operations = collectOperations(routers)
   const schemaMap = collectSchemaMap(operations)
@@ -23,7 +23,12 @@ export function generateHonoServer(options: HonoServerOptions): Record<string, s
   files["models.ts"] = generateModels(schemaMap, identifier, namespace)
 
   for (const operation of operations) {
-    files[`${camelCase(operation.group)}/${camelCase(operation.id)}.ts`] = generateOpFile(operation, schemaMap, identifier, namespace)
+    files[`${camelCase(operation.group)}/${camelCase(operation.id)}.ts`] = generateOpFile(
+      operation,
+      schemaMap,
+      identifier,
+      namespace,
+    )
   }
 
   files["index.ts"] = generateIndex(operations, identifier)
@@ -33,63 +38,6 @@ export function generateHonoServer(options: HonoServerOptions): Record<string, s
   }
 
   return files
-}
-
-// ---- models.ts ----
-
-function generateModels(schemaMap: SchemaMap, identifier: (s: string) => string, namespace?: string): string {
-  const lines: string[] = []
-  lines.push(`import { z } from "zod"`)
-  lines.push("")
-
-  for (const [id, schemaInfo] of topologicalSortSchemaMap(schemaMap)) {
-    const schemaName = camelCase(id) + "Schema"
-    const tsName = identifier(id)
-
-    switch (schemaInfo.kind) {
-      case "record": {
-        lines.push(`export const ${schemaName} = z.object({`)
-        for (const field of schemaInfo.fields!) {
-          lines.push(`  ${field.name}: ${toZod(field.model, schemaMap)}${field.required ? "" : optionalDefault(field.model)},`)
-        }
-        lines.push(`})`)
-        lines.push("")
-
-        lines.push(`export interface ${tsName} {`)
-        for (const field of schemaInfo.fields!) {
-          lines.push(`  ${field.name}${field.required ? "" : "?"}: ${toTs(field.model, schemaMap, identifier, namespace)};`)
-        }
-        lines.push(`}`)
-        lines.push("")
-        break
-      }
-      case "enums": {
-        lines.push(`export const ${schemaName} = z.enum(${JSON.stringify(Object.values(schemaInfo.variants!))})`)
-        lines.push(`export type ${tsName} = z.infer<typeof ${schemaName}>`)
-        lines.push("")
-        break
-      }
-      case "union": {
-        const variants = Object.entries(schemaInfo.unionVariants!)
-        const unionItems = variants.map(([, v]) => toZod(v as Models, schemaMap)).join(", ")
-        lines.push(`export const ${schemaName} = z.union([${unionItems}])`)
-        lines.push(`export type ${tsName} = z.infer<typeof ${schemaName}>`)
-        lines.push("")
-        break
-      }
-      case "taggedUnion": {
-        const discriminator = schemaInfo.discriminator!
-        const unionItems = Object.entries(schemaInfo.unionVariants!).map(([, v]) =>
-          `${toZod(v as Models, schemaMap)}`)
-        lines.push(`export const ${schemaName} = z.discriminatedUnion(${JSON.stringify(discriminator)}, [${unionItems.join(", ")}])`)
-        lines.push(`export type ${tsName} = z.infer<typeof ${schemaName}>`)
-        lines.push("")
-        break
-      }
-    }
-  }
-
-  return lines.join("\n")
 }
 
 // ---- per-operation file ----
@@ -109,7 +57,6 @@ function generateOpFile(
   const hasQuery = Object.keys(operation.queries).length > 0
   const hasHeaders = Object.keys(operation.headers).length > 0
 
-  // ---- precise imports ----
   const needsZod = hasParams || hasQuery || hasHeaders
   if (needsZod) {
     lines.push(`import { z } from "zod"`)
@@ -153,26 +100,30 @@ function generateOpFile(
   }
   lines.push("")
 
-  // ---- request params/query/headers schemaMap (Zod) ----
   if (hasParams) {
-    const fields = Object.entries(operation.pathVariables)
-      .map(([key, value]) => `  ${key}: ${toZod(value.model, schemaMap)},`)
+    const fields = Object.entries(operation.pathVariables).map(
+      ([key, value]) => `  ${key}: ${toZod(value.model, schemaMap)},`,
+    )
     lines.push(`const ${operationName}Params = z.object({`)
     lines.push(...fields)
     lines.push(`})`)
     lines.push("")
   }
   if (hasQuery) {
-    const fields = Object.entries(operation.queries)
-      .map(([key, query]) => `  ${key}: ${toZod(query.model, schemaMap)}${query.required ? "" : optionalDefault(query.model)},`)
+    const fields = Object.entries(operation.queries).map(
+      ([key, query]) =>
+        `  ${key}: ${toZod(query.model, schemaMap)}${query.required ? "" : optionalDefault(query.model)},`,
+    )
     lines.push(`const ${operationName}Query = z.object({`)
     lines.push(...fields)
     lines.push(`})`)
     lines.push("")
   }
   if (hasHeaders) {
-    const fields = Object.entries(operation.headers)
-      .map(([key, header]) => `  "${key}": ${toZod(header.model, schemaMap)}${header.required ? "" : optionalDefault(header.model)},`)
+    const fields = Object.entries(operation.headers).map(
+      ([key, header]) =>
+        `  "${key}": ${toZod(header.model, schemaMap)}${header.required ? "" : optionalDefault(header.model)},`,
+    )
     lines.push(`const ${operationName}Headers = z.object({`)
     lines.push(...fields)
     lines.push(`})`)
@@ -182,21 +133,28 @@ function generateOpFile(
   lines.push(`export namespace ${OperationName}Operation {`)
   lines.push("")
 
-  // ---- Request interface ----
   const requestFields: string[] = []
   if (hasParams) {
     const field = Object.entries(operation.pathVariables)
-      .map(([key, value]) => `${key}: ${toTs(value.model, schemaMap, identifier, namespace)}`).join("; ")
+      .map(([key, value]) => `${key}: ${toTs(value.model, schemaMap, identifier, namespace)}`)
+      .join("; ")
     requestFields.push(`params: { ${field} }`)
   }
   if (hasQuery) {
     const field = Object.entries(operation.queries)
-      .map(([key, query]) => `${key}${query.required ? "" : "?"}: ${toTs(query.model, schemaMap, identifier, namespace)}`).join("; ")
+      .map(
+        ([key, query]) => `${key}${query.required ? "" : "?"}: ${toTs(query.model, schemaMap, identifier, namespace)}`,
+      )
+      .join("; ")
     requestFields.push(`query: { ${field} }`)
   }
   if (hasHeaders) {
     const field = Object.entries(operation.headers)
-      .map(([key, header]) => `"${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)}`).join("; ")
+      .map(
+        ([key, header]) =>
+          `"${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)}`,
+      )
+      .join("; ")
     requestFields.push(`headers: { ${field} }`)
   }
   if (hasBody) {
@@ -207,7 +165,6 @@ function generateOpFile(
   lines.push(`  }`)
   lines.push("")
 
-  // ---- Response discriminated union ----
   const responseEntries = Object.entries(operation.responses)
   const responseKind = (status: string) => operation.responseKinds[Number(status)] ?? "json-response"
   const responseBodyField = (kind: string, model: Models | null) => {
@@ -242,7 +199,6 @@ function generateOpFile(
   }
   lines.push("")
 
-  // ---- Handler type ----
   if (requestFields.length > 0) {
     lines.push(`  export type Handler = (req: Request) => Promise<Response>`)
   } else {
@@ -252,11 +208,12 @@ function generateOpFile(
   lines.push("")
 
   if (hasParams) {
-    lines.push(`export const ${operationName}Pattern = new URLPattern({ pathname: "*/${toHonoPath(operation.path).replace(/^\//, "")}" })`)
+    lines.push(
+      `export const ${operationName}Pattern = new URLPattern({ pathname: "*/${toHonoPath(operation.path).replace(/^\//, "")}" })`,
+    )
     lines.push("")
   }
 
-  // ---- Wrapper function ----
   lines.push(`export function ${operationName}(handler: ${OperationName}Operation.Handler) {`)
   lines.push(`  return {`)
   lines.push(`    method: "${operation.method.toUpperCase()}",`)
@@ -279,8 +236,7 @@ function generateOpFile(
     requestArgs.push("query")
   }
   if (hasHeaders) {
-    const headerParts = Object.keys(operation.headers)
-      .map((key) => `        "${key}": request.headers.get("${key}"),`)
+    const headerParts = Object.keys(operation.headers).map((key) => `        "${key}": request.headers.get("${key}"),`)
     lines.push(`      const headers = ${operationName}Headers.parse({`)
     lines.push(...headerParts)
     lines.push(`      })`)
@@ -298,25 +254,34 @@ function generateOpFile(
     lines.push(`      const result = await handler()`)
   }
 
-  // response dispatch
   lines.push(`      switch (result.status) {`)
   for (const [status, responseModel] of Object.entries(operation.responses)) {
     const kind = operation.responseKinds[Number(status)] ?? "json-response"
     if (responseModel != null) {
       if (kind === "json-response") {
-        lines.push(`        case ${status}: return new Response(JSON.stringify(result.body), { status: ${status}, headers: { "Content-Type": "application/json" } })`)
+        lines.push(
+          `        case ${status}: return new Response(JSON.stringify(result.body), { status: ${status}, headers: { "Content-Type": "application/json" } })`,
+        )
       } else if (kind === "binary") {
-        lines.push(`        case ${status}: return new Response(result.body, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`)
+        lines.push(
+          `        case ${status}: return new Response(result.body, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`,
+        )
       } else {
-        lines.push(`        case ${status}: return new Response(result.stream, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`)
+        lines.push(
+          `        case ${status}: return new Response(result.stream, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`,
+        )
       }
     } else if (kind === "binary") {
-      lines.push(`        case ${status}: return new Response(result.body, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`)
+      lines.push(
+        `        case ${status}: return new Response(result.body, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`,
+      )
     } else {
       lines.push(`        case ${status}: return new Response(null, { status: ${status} })`)
     }
   }
-  lines.push(`        default: return new Response(JSON.stringify({ message: \`Unexpected response status \${(result as { status: number }).status}\` }), { status: 500, headers: { "Content-Type": "application/json" } })`)
+  lines.push(
+    `        default: return new Response(JSON.stringify({ message: \`Unexpected response status \${(result as { status: number }).status}\` }), { status: 500, headers: { "Content-Type": "application/json" } })`,
+  )
   lines.push(`      }`)
 
   lines.push(`    },`)
@@ -335,7 +300,9 @@ function generateIndex(operations: OperationDescriptor[], _identifier: (s: strin
   for (const operation of operations) {
     const operationName = camelCase(operation.id)
     const OperationName = pascalCase(operation.id)
-    lines.push(`import { ${operationName}, ${OperationName}Operation } from "./${camelCase(operation.group)}/${operationName}"`)
+    lines.push(
+      `import { ${operationName}, ${OperationName}Operation } from "./${camelCase(operation.group)}/${operationName}"`,
+    )
   }
 
   lines.push("")
@@ -489,19 +456,13 @@ function emitFieldExpr(field: FieldNode, envRef: string, rawEnv: string): string
   }
 }
 
-function collectLevel(
-  properties: Record<string, Models>,
-  required: string[],
-  prefix: string,
-): CollectResult {
+function collectLevel(properties: Record<string, Models>, required: string[], prefix: string): CollectResult {
   const envVars: EnvVar[] = []
   const fields: FieldNode[] = []
   const switches: SwitchNode[] = []
 
   for (const [propName, model] of Object.entries(properties)) {
-    const envPrefix = prefix
-      ? `${prefix}_${snakeCase(propName).toUpperCase()}`
-      : snakeCase(propName).toUpperCase()
+    const envPrefix = prefix ? `${prefix}_${snakeCase(propName).toUpperCase()}` : snakeCase(propName).toUpperCase()
 
     switch (model.kind) {
       case "int32":
@@ -551,7 +512,13 @@ function collectLevel(
           })
         }
 
-        switches.push({ resolveFnName, dvEnvName: envPrefix, dvZodExpr: dvZod, discriminator: model.discriminator as string, variants })
+        switches.push({
+          resolveFnName,
+          dvEnvName: envPrefix,
+          dvZodExpr: dvZod,
+          discriminator: model.discriminator as string,
+          variants,
+        })
         fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName, dvEnvName: envPrefix })
         break
       }
@@ -584,7 +551,9 @@ function collectLevel(
       case "set": {
         const base = (model as { base: Models }).base
         if (!isSimpleType(base)) {
-          throw new Error(`unsupported configuration value of kind ${model.kind}<non-simple>, only simple element types are allowed`)
+          throw new Error(
+            `unsupported configuration value of kind ${model.kind}<non-simple>, only simple element types are allowed`,
+          )
         }
         envVars.push({ envName: envPrefix, zodExpr: toZodEnv(model) })
         fields.push({ name: propName, kind: "env", envName: envPrefix })
@@ -617,28 +586,55 @@ function collectVariant(model: Models, prefix: string): CollectResult {
 }
 
 function isSimpleType(model: Models): boolean {
-  return ["int32", "float32", "float64", "boolean", "string", "datetime", "date", "duration", "literal", "enums"].includes(model.kind)
+  return [
+    "int32",
+    "float32",
+    "float64",
+    "boolean",
+    "string",
+    "datetime",
+    "date",
+    "duration",
+    "literal",
+    "enums",
+  ].includes(model.kind)
 }
 
 function toZodEnv(model: Models): string {
   switch (model.kind) {
-    case "int32":    return "z.coerce.number().int()"
+    case "int32":
+      return "z.coerce.number().int()"
     case "float32":
-    case "float64":  return "z.coerce.number()"
-    case "boolean":  return "z.coerce.boolean()"
-    case "string":   return "z.string()"
-    case "datetime": return "z.string().datetime()"
-    case "date":     return "z.string().date()"
-    case "duration": return "z.string()"
-    case "literal":  return `z.literal(${JSON.stringify(model.value)})`
-    case "null":     return "z.null()"
-    case "enums":    return `z.enum(${JSON.stringify(Object.values(model.variants))})`
+    case "float64":
+      return "z.coerce.number()"
+    case "boolean":
+      return "z.coerce.boolean()"
+    case "string":
+      return "z.string()"
+    case "datetime":
+      return "z.string().datetime()"
+    case "date":
+      return "z.string().date()"
+    case "duration":
+      return "z.string()"
+    case "literal":
+      return `z.literal(${JSON.stringify(model.value)})`
+    case "null":
+      return "z.null()"
+    case "enums":
+      return `z.enum(${JSON.stringify(Object.values(model.variants))})`
     case "array": {
-      if (!isSimpleType(model.base)) throw new Error("unsupported configuration value of kind array<non-simple>, only simple element types are allowed")
+      if (!isSimpleType(model.base))
+        throw new Error(
+          "unsupported configuration value of kind array<non-simple>, only simple element types are allowed",
+        )
       return `z.coerce.string().transform(s => s.split(',').filter(Boolean)).pipe(z.array(${toZodEnv(model.base)}))`
     }
     case "set": {
-      if (!isSimpleType(model.base)) throw new Error("unsupported configuration value of kind set<non-simple>, only simple element types are allowed")
+      if (!isSimpleType(model.base))
+        throw new Error(
+          "unsupported configuration value of kind set<non-simple>, only simple element types are allowed",
+        )
       return `z.coerce.string().transform(s => new Set(s.split(',').filter(Boolean))).pipe(z.set(${toZodEnv(model.base)}))`
     }
     case "map":
@@ -647,103 +643,3 @@ function toZodEnv(model: Models): string {
       return "z.string()"
   }
 }
-
-function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]> {
-  const map: Record<string, T[]> = {}
-  for (const item of items) {
-    const key = keyFn(item)
-    if (!map[key]) map[key] = []
-    map[key].push(item)
-  }
-  return map
-}
-
-function toHonoPath(path: string): string {
-  return path.replace(/\{(\w+)\}/g, ":$1")
-}
-
-function contentTypeForKind(kind: string): string {
-  switch (kind) {
-    case "binary": return "application/octet-stream"
-    case "stream-response": return "application/x-ndjson"
-    case "sse-response": return "text/event-stream"
-    default: return "application/json"
-  }
-}
-
-// ---- helpers ----
-
-function optionalDefault(model: Models): string {
-  if ("default" in model && model.default != null) {
-    return `.optional().default(${JSON.stringify(model.default)})`
-  }
-  return ".optional()"
-}
-
-function toZod(model: Models, schemaMap: SchemaMap): string {
-  switch (model.kind) {
-    case "int32":    return "z.coerce.number().int()"
-    case "float32":
-    case "float64":  return "z.coerce.number()"
-    case "boolean":  return "z.coerce.boolean()"
-    case "string":   return "z.string()"
-    case "datetime": return "z.string().datetime()"
-    case "date":     return "z.string().date()"
-    case "duration": return "z.string()"
-    case "literal":  return `z.literal(${JSON.stringify(model.value)})`
-    case "null":     return "z.null()"
-    case "array":    return `${toZod(model.base, schemaMap)}.array()`
-    case "set":      return `${toZod(model.base, schemaMap)}.array()`
-    case "map":      return `z.record(z.string(), ${toZod(model.base, schemaMap)})`
-    case "enums":    return `z.enum(${JSON.stringify(Object.values(model.variants))})`
-    case "record": {
-      const schemaInfo = schemaMap.get(model.id)
-      return schemaInfo?.fields ? camelCase(model.id) + "Schema" : "z.unknown()"
-    }
-    case "union": {
-      const schemaInfo = schemaMap.get(model.id)
-      if (schemaInfo?.unionVariants) return camelCase(model.id) + "Schema"
-      const unionItems = Object.values(model.variants).map((v) => toZod(v as Models, schemaMap))
-      return `z.union([${unionItems.join(", ")}])`
-    }
-    case "taggedUnion": {
-      const schemaInfo = schemaMap.get(model.id)
-      if (schemaInfo?.unionVariants) return camelCase(model.id) + "Schema"
-      const discriminator = model.discriminator as string
-      const unionItems = Object.values(model.variants).map((v) =>
-        `${toZod(v as Models, schemaMap)}`)
-      return `z.discriminatedUnion(${JSON.stringify(discriminator)}, [${unionItems.join(", ")}])`
-    }
-    default: return "z.unknown()"
-  }
-}
-
-function toTs(model: Models, schemaMap: SchemaMap, identifier: (s: string) => string, namespace?: string): string {
-  void namespace
-  switch (model.kind) {
-    case "int32": case "float32": case "float64": return "number"
-    case "boolean": return "boolean"
-    case "string": case "datetime": case "date": case "duration": return "string"
-    case "literal": return JSON.stringify(model.value)
-    case "null": return "null"
-    case "array": case "set": return `${toTs(model.base, schemaMap, identifier, namespace)}[]`
-    case "map": return `Record<string, ${toTs(model.base, schemaMap, identifier, namespace)}>`
-    case "enums": {
-      const schemaInfo = schemaMap.get(model.id)
-      if (schemaInfo?.variants) return identifier(model.id)
-      return Object.values(model.variants).map((v) => JSON.stringify(v)).join(" | ")
-    }
-    case "record": {
-      const schemaInfo = schemaMap.get(model.id)
-      return schemaInfo?.fields ? identifier(model.id) : "unknown"
-    }
-    case "union":
-    case "taggedUnion": {
-      const schemaInfo = schemaMap.get(model.id)
-      if (schemaInfo?.unionVariants) return identifier(model.id)
-      return Object.values(model.variants).map((v) => toTs(v as Models, schemaMap, identifier, namespace)).join(" | ")
-    }
-    default: return "unknown"
-  }
-}
-

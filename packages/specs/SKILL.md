@@ -2,11 +2,10 @@
 name: huanglangjian-specs
 description: |
   Type-safe API specification toolkit (@huanglangjian/specs). Define HTTP APIs
-  declaratively with composable type models, then generate OpenAPI 3.2 documents,
-  JSON Schema (Draft 2020-12), Hono server stubs with Zod validation, and
-  TypeScript fetch-based client code. Use when working with @huanglangjian/specs,
-  defining API specs, generating OpenAPI/JSON Schema, server stubs, or client SDKs
-  from model definitions.
+  declaratively with composable type models, then generate OpenAPI 3.2 documents
+  and JSON Schema (Draft 2020-12). Provides a shared codegen IR for building
+  code generators. Use when working with @huanglangjian/specs, defining API
+  specs, generating OpenAPI/JSON Schema, or building code generators.
 ---
 
 ## When to use me
@@ -15,9 +14,8 @@ Use this skill when the user asks to:
 - Define API models or routes using `@huanglangjian/specs`
 - Generate OpenAPI specification documents
 - Generate JSON Schema files
-- Generate Hono server code (routes, handlers, types, config)
-- Generate TypeScript client code
 - Work with security schemes (API Key, OpenID Connect)
+- Build code generators using the shared IR (OperationDescriptor, SchemaMap, collect*)
 - Any task involving `@huanglangjian/specs` or this monorepo
 
 ## Installation
@@ -179,56 +177,29 @@ const schema = mergeJsonSchemas({
 // → { $schema: "...draft-2020-12", $defs: { ServerConfig: {...}, PostgresConfig: {...} } }
 ```
 
-### `generateHonoServer(options)` → `Record<string, string>`
-
-Generates Hono server source files (filenames → content).
-
-```ts
-interface HonoServerOptions {
-  routers: RouterModel[]
-  identifier?: (id: string) => string    // default: pascalCase
-  namespace?: string
-  configuration?: RecordModel            // server config for env-var generation
-}
-```
-
-Output files:
-| File | Content |
-|------|---------|
-| `models.ts` | Zod schemas + TypeScript interfaces for all named models |
-| `{camelCase(group)}/{camelCase(id)}.ts` | Per-operation: Request/Response types, Handler type, wrapper function with Zod validation |
-| `index.ts` | `mountRoutes(app, handlers)` wiring function |
-| `config.ts` | (if `configuration` provided) t3-env + Zod runtime config with recursive taggedUnion/union resolution |
-
-Generated handler wrapper parses path params, query, headers, and body with Zod, dispatches to the handler, then serializes responses. Supports json-response, stream-response, sse-response, and binary responses.
-
-Configuration generation:
-- Primitive fields → environment variables with `snake_case` naming
-- `record` → nested object
-- `taggedUnion` → `switch` statement based on discriminator env var, with per-variant sub-configs resolved directly (discriminator field is part of each variant's own properties)
-- `union` → same as taggedUnion but uses `_TYPE` suffix for the discriminator env var
-- `array`/`set` → comma-separated env var with Zod transform (only simple element types)
-
-### `generateTsClient(options)` → `Record<string, string>`
-
-Generates TypeScript fetch-based client code.
-
-```ts
-interface TsClientOptions {
-  routers: RouterModel[]
-  identifier?: (id: string) => string    // default: pascalCase
-  namespace?: string
-}
-```
-
-Output files:
-| File | Content |
-|------|---------|
-| `models.ts` | Zod schemas + TypeScript interfaces |
-| `{camelCase(group)}/{camelCase(id)}.ts` | Per-operation: async function with fetch + Zod response validation |
-| `index.ts` | Barrel re-exports grouped by router name |
-
 ### `collectNamedModels(models, options?)` → `AnyNamedDescriptor[]`
+
+Collects named descriptors (record, enums, union, taggedUnion) from an array of models.
+
+### `collectOperations(routers)` → `OperationDescriptor[]`
+
+Flattens all routers into operation descriptors with extracted path variables, queries, headers, request models, and responses.
+
+### `collectSchemaMap(operations)` → `SchemaMap`
+
+Builds a schema lookup map from collected operations for codegen.
+
+### `topologicalSortSchemaMap(schemaMap)` → `[string, SchemaInfo][]`
+
+Topologically sorts schema map entries so dependencies come before dependents.
+
+### `resolveNamedRoot(model)` → `{ id: string } | null`
+
+Finds the root named model through wrapper types (array/set/map).
+
+## Usage Example
+
+For code generation, use `@huanglangjian/specs-ts-codegen`. For model definitions and OpenAPI/JSON Schema generation, see below.
 
 Collects named descriptors (record, enums, union, taggedUnion) from an array of models.
 
@@ -248,8 +219,6 @@ Complete warehouse CRUD example:
 import { int32, string, datetime, array, record, enums, set, literal, taggedUnion, union } from "@huanglangjian/specs"
 import { route, json, binary as binaryResponse } from "@huanglangjian/specs"
 import { generateOpenapi } from "@huanglangjian/specs"
-import { generateHonoServer } from "@huanglangjian/specs"
-import { generateTsClient } from "@huanglangjian/specs"
 import { mergeJsonSchemas } from "@huanglangjian/specs"
 import { apikey, openIdConnect } from "@huanglangjian/specs"
 import { deployOpenIdConnect } from "@huanglangjian/specs"
@@ -404,20 +373,7 @@ const { openapi } = generateOpenapi({
 })
 // → write: JSON.stringify(openapi, null, 2)
 
-// 6. Generate Hono server
-const honoFiles = generateHonoServer({
-  routers: [{ name: "Warehouses", routes: router }],
-  configuration: ServerConfig,
-})
-// → honoFiles = { "models.ts": "...", "warehouses/listWarehouses.ts": "...", "index.ts": "...", "config.ts": "...", ... }
-
-// 7. Generate TypeScript client
-const clientFiles = generateTsClient({
-  routers: [{ name: "Warehouses", routes: router }],
-})
-// → clientFiles = { "models.ts": "...", "warehouses/listWarehouses.ts": "...", "index.ts": "...", ... }
-
-// 8. Generate server config JSON Schema
+// 6. Generate server config JSON Schema
 const configSchema = mergeJsonSchemas({
   ServerConfig, PostgresConfig, SqliteConfig,
   // ... all nested named records
@@ -438,27 +394,23 @@ const configSchema = mergeJsonSchemas({
 | `src/generate-openapi.ts` | `generateOpenapi()` — the main OpenAPI 3.2 generator |
 | `src/generate-openapi.test.ts` | Vitest tests for JSON Schema and OpenAPI generation |
 | `src/test.ts` | Complete demo script exercising all generators (run via `tsx src/test.ts`) |
-| `src/codegen/descriptors.ts` | Shared descriptor types (OperationDescriptor, ModelDescriptor, SchemaMap, etc.) |
-| `src/codegen/collect.ts` | `collectNamedModels()`, `collectOperations()`, `collectSchemaMap()`, `resolveNamedRoot()` |
+| `src/codegen/descriptors.ts` | Shared descriptor types (OperationDescriptor, SchemaMap, etc.) |
+| `src/codegen/collect.ts` | `collectNamedModels()`, `collectOperations()`, `collectSchemaMap()`, `resolveNamedRoot()`, `topologicalSortSchemaMap()` |
 | `src/codegen/json-schema.ts` | `mergeJsonSchemas()` |
-| `src/codegen/hono-server.ts` | `generateHonoServer()` — full Hono server codegen with config generation |
-| `src/codegen/ts-client.ts` | `generateTsClient()` — TypeScript fetch client codegen |
 | `src/schemas/json-schema-draft-2020-12.ts` | TypeScript types for JSON Schema Draft 2020-12 |
 | `src/schemas/json-schema-draft-07.ts` | TypeScript types for JSON Schema Draft-07 |
 | `src/schemas/openapi-schema.ts` | TypeScript types for OpenAPI 3.x |
 | `src/schemas/schema-variants.ts` | Variant schema types |
 | `src/utils/index.ts` | Utilities: `ExtractPathParams`, merge, path handling |
-| `output/` | Generated example output (openapi.json, hono-server/, api-client/, server-config.schema.json) |
+| `output/` | Generated example output (openapi.json, server-handlers/, api-client/, server-config.schema.json) |
 
 ## Patterns & Best Practices
 
 1. **Always give `record` an `id`** — it becomes the schema name in OpenAPI `components/schemas`.
-2. **Optional fields** are specified via `optional` — a string array of property keys. All properties not in `optional` are treated as required (TypeScript non-optional, Zod non-optional). If `optional` is omitted entirely, every property is required.
-3. **`taggedUnion` discriminator**: `discriminator` is the field name used as the discriminator. Each variant's `RecordModel` must include this field as a required `literal(variantKey)`, e.g., `type: literal("postgres")`.
+2. **Optional fields** are specified via `optional` — a string array of property keys. All properties not in `optional` are treated as required. If `optional` is omitted, every property is required.
+3. **`taggedUnion` discriminator**: `discriminator` is the field name. Each variant's `RecordModel` must include this field as a required `literal(variantKey)`.
 4. **`union` wrapping**: each variant is wrapped in `{ [variantName]: variantSchema }` in JSON Schema.
 5. **Path parameters** use `{name}` syntax and are declared in `variables`. Path param types are restricted to `SimpleType` (primitives).
 6. **Security**: path patterns are regex. If `methods` is not set on a `SecurityPolicyPathItem`, the pipeline applies to all HTTP methods.
-7. **Configuration generation** supports nested `record`, `taggedUnion`, `union`, `array`, `set`, and `enums`. `map` is not supported in config. For `array`/`set`, use comma-separated env vars.
-8. **Content types**: response `contentType` defaults per response kind — `json` → `application/json`, `jsonStream` → `application/x-ndjson`, `sseStream` → `text/event-stream`, `binary` → `application/octet-stream`.
-9. **The `schema` field** on models accepts a [StandardSchema](https://standardschema.dev/) validator. When provided, `InferModel<T>` extracts the output type. This enables full type inference from Zod/Valibot/etc. schemas.
-10. **The `default` field** on any model accepts a default value of the model's inferred type. When used on non-required record fields, generates `.optional().default(value)` in Zod schema output. Required fields ignore `default`.
+7. **The `schema` field** on models accepts a [StandardSchema](https://standardschema.dev/) validator. When provided, `InferModel<T>` extracts the output type.
+8. **The `default` field** on any model accepts a default value of the model's inferred type. When used on non-required record fields, generates `.optional().default(value)` in Zod schema output.

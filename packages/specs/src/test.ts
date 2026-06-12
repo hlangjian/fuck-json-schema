@@ -7,8 +7,8 @@ import { binary as binaryResponse, json, route } from "./api"
 import { generateOpenapi } from "./generate-openapi"
 import { collectNamedModels, collectOperations } from "./codegen/collect"
 import { mergeJsonSchemas } from "./codegen/json-schema"
-import { generateHonoServer } from "./codegen/hono-server"
-import { generateTsClient } from "./codegen/ts-client"
+import { generateTsServer } from "@huanglangjian/specs-ts-codegen"
+import { generateTsClient } from "@huanglangjian/specs-ts-codegen"
 import { apikey, openIdConnect } from "./security"
 import type { SecurityPolicyModel } from "./security"
 import { deployOpenIdConnect } from "./deployment"
@@ -262,20 +262,20 @@ const { openapi } = generateOpenapi({
 writeFileSync(resolve(outDir, "openapi.json"), JSON.stringify(openapi, null, 2), "utf-8")
 console.log("✅ openapi.json")
 
-// 2. Hono server code
-const honoFiles = generateHonoServer({
+// 2. Server handler code
+const serverFiles = generateTsServer({
   routers: [{ name: "Warehouses", routes: router }],
   configuration: ServerConfig,
 })
-const honoOutDir = resolve(outDir, "hono-server")
-rmSync(honoOutDir, { recursive: true, force: true })
-mkdirSync(honoOutDir, { recursive: true })
-for (const [path, content] of Object.entries(honoFiles)) {
-  const full = resolve(honoOutDir, path)
+const serverOutDir = resolve(outDir, "server-handlers")
+rmSync(serverOutDir, { recursive: true, force: true })
+mkdirSync(serverOutDir, { recursive: true })
+for (const [path, content] of Object.entries(serverFiles)) {
+  const full = resolve(serverOutDir, path)
   mkdirSync(dirname(full), { recursive: true })
   writeFileSync(full, content, "utf-8")
 }
-console.log(`✅ hono-server (${Object.keys(honoFiles).length} files)`)
+console.log(`✅ server-handlers (${Object.keys(serverFiles).length} files)`)
 
 // 3. TypeScript client code
 const clientFiles = generateTsClient({
