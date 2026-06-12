@@ -196,7 +196,7 @@ Output files:
 | File | Content |
 |------|---------|
 | `models.ts` | Zod schemas + TypeScript interfaces for all named models |
-| `{camelCase(id)}.ts` | Per-operation: Request/Response types, Handler type, wrapper function with Zod validation |
+| `{camelCase(group)}/{camelCase(id)}.ts` | Per-operation: Request/Response types, Handler type, wrapper function with Zod validation |
 | `index.ts` | `mountRoutes(app, handlers)` wiring function |
 | `config.ts` | (if `configuration` provided) t3-env + Zod runtime config with recursive taggedUnion/union resolution |
 
@@ -225,7 +225,7 @@ Output files:
 | File | Content |
 |------|---------|
 | `models.ts` | Zod schemas + TypeScript interfaces |
-| `{camelCase(id)}.ts` | Per-operation: async function with fetch + Zod response validation |
+| `{camelCase(group)}/{camelCase(id)}.ts` | Per-operation: async function with fetch + Zod response validation |
 | `index.ts` | Barrel re-exports grouped by router name |
 
 ### `collectNamedModels(models, options?)` → `AnyNamedDescriptor[]`
@@ -409,13 +409,13 @@ const honoFiles = generateHonoServer({
   routers: [{ name: "Warehouses", routes: router }],
   configuration: ServerConfig,
 })
-// → honoFiles = { "models.ts": "...", "listWarehouses.ts": "...", "index.ts": "...", "config.ts": "...", ... }
+// → honoFiles = { "models.ts": "...", "warehouses/listWarehouses.ts": "...", "index.ts": "...", "config.ts": "...", ... }
 
 // 7. Generate TypeScript client
 const clientFiles = generateTsClient({
   routers: [{ name: "Warehouses", routes: router }],
 })
-// → clientFiles = { "models.ts": "...", "listWarehouses.ts": "...", "index.ts": "...", ... }
+// → clientFiles = { "models.ts": "...", "warehouses/listWarehouses.ts": "...", "index.ts": "...", ... }
 
 // 8. Generate server config JSON Schema
 const configSchema = mergeJsonSchemas({

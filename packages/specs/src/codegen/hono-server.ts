@@ -23,7 +23,7 @@ export function generateHonoServer(options: HonoServerOptions): Record<string, s
   files["models.ts"] = generateModels(schemaMap, identifier, namespace)
 
   for (const operation of operations) {
-    files[`${camelCase(operation.id)}.ts`] = generateOpFile(operation, schemaMap, identifier, namespace)
+    files[`${camelCase(operation.group)}/${camelCase(operation.id)}.ts`] = generateOpFile(operation, schemaMap, identifier, namespace)
   }
 
   files["index.ts"] = generateIndex(operations, identifier)
@@ -150,7 +150,7 @@ function generateOpFile(
     const parts: string[] = []
     if (typeImports.length > 0) parts.push(typeImports.join(", "))
     if (schemaImports.length > 0) parts.push(schemaImports.join(", "))
-    lines.push(`import { ${parts.join(", ")} } from "./models"`)
+    lines.push(`import { ${parts.join(", ")} } from "../models"`)
   }
   lines.push("")
 
@@ -323,7 +323,7 @@ function generateIndex(operations: OperationDescriptor[], _identifier: (s: strin
   for (const operation of operations) {
     const operationName = camelCase(operation.id)
     const OperationName = pascalCase(operation.id)
-    lines.push(`import { ${operationName}, type ${OperationName}Handler, type ${OperationName}Request, type ${OperationName}Response } from "./${operationName}"`)
+    lines.push(`import { ${operationName}, type ${OperationName}Handler, type ${OperationName}Request, type ${OperationName}Response } from "./${camelCase(operation.group)}/${operationName}"`)
     lines.push(`export type { ${OperationName}Handler, ${OperationName}Request, ${OperationName}Response }`)
   }
 

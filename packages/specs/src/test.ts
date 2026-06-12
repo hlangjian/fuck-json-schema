@@ -271,7 +271,9 @@ const honoOutDir = resolve(outDir, "hono-server")
 rmSync(honoOutDir, { recursive: true, force: true })
 mkdirSync(honoOutDir, { recursive: true })
 for (const [path, content] of Object.entries(honoFiles)) {
-  writeFileSync(resolve(honoOutDir, path), content, "utf-8")
+  const full = resolve(honoOutDir, path)
+  mkdirSync(dirname(full), { recursive: true })
+  writeFileSync(full, content, "utf-8")
 }
 console.log(`✅ hono-server (${Object.keys(honoFiles).length} files)`)
 
@@ -283,7 +285,9 @@ const clientOutDir = resolve(outDir, "api-client")
 rmSync(clientOutDir, { recursive: true, force: true })
 mkdirSync(clientOutDir, { recursive: true })
 for (const [path, content] of Object.entries(clientFiles)) {
-  writeFileSync(resolve(clientOutDir, path), content, "utf-8")
+  const full = resolve(clientOutDir, path)
+  mkdirSync(dirname(full), { recursive: true })
+  writeFileSync(full, content, "utf-8")
 }
 console.log(`✅ api-client (${Object.keys(clientFiles).length} files)`)
 

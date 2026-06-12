@@ -21,7 +21,7 @@ export function generateTsClient(options: TsClientOptions): Record<string, strin
   files["models.ts"] = generateModels(schemaMap, identifier, namespace)
 
   for (const operation of operations) {
-    files[`${camelCase(operation.id)}.ts`] = generateClientFn(operation, schemaMap, identifier, namespace)
+    files[`${camelCase(operation.group)}/${camelCase(operation.id)}.ts`] = generateClientFn(operation, schemaMap, identifier, namespace)
   }
 
   files["index.ts"] = generateClientIndex(operations, identifier)
@@ -131,7 +131,7 @@ function generateClientFn(
     }
   }
   if (allModelImports.length > 0) {
-    lines.push(`import { ${allModelImports.join(", ")} } from "./models"`)
+    lines.push(`import { ${allModelImports.join(", ")} } from "../models"`)
     lines.push("")
   }
 
@@ -259,7 +259,7 @@ function generateClientIndex(operations: OperationDescriptor[], _identifier: (s:
     for (const operation of groupOps) {
       const n = camelCase(operation.id)
       const OperationName = pascalCase(operation.id)
-      lines.push(`export { ${n}, type ${OperationName}Request, type ${OperationName}Response } from "./${n}"`)
+      lines.push(`export { ${n}, type ${OperationName}Request, type ${OperationName}Response } from "./${camelCase(operation.group)}/${n}"`)
     }
     lines.push("")
   }
