@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.9.0
+
+### Minor Changes
+
+- 88f0516: Adopt standard Web API handler signature (Request, params?), remove Hono dependency from generated handlers, wrap operation types in namespace to avoid naming collisions, remove mountRoutes.
+
 ## 0.8.5
 
 ### Patch Changes
