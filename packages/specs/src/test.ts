@@ -1,11 +1,16 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { binary as binaryResponse, json, route } from "@huanglangjian/specs"
-import { array, datetime, enums, int32, literal, record, set, string, taggedUnion, union } from "@huanglangjian/specs"
-import { generateTsServer } from "./server"
-import { generateTsClient } from "./client"
+import type { HttpMethod } from "./api"
+import { binary as binaryResponse, json, route } from "./api"
+import { generateOpenapi } from "./generate-openapi"
+import { collectNamedModels, collectOperations } from "./codegen/collect"
+import { mergeJsonSchemas } from "./codegen/json-schema"
+import { apikey, openIdConnect } from "./security"
+import type { SecurityPolicyModel } from "./security"
+import { deployOpenIdConnect } from "./deployment"
+import { array, datetime, enums, int32, literal, record, set, string, taggedUnion, union } from "./types"
 
 const Warehouse = record({
   id: "Warehouse",
@@ -50,6 +55,7 @@ const ErrorResponse = record({
   },
 })
 
+// ---- Server config with taggedUnion, union, nested ----
 const PostgresConfig = record({
   id: "PostgresConfig",
   properties: {
@@ -200,31 +206,70 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const outDir = resolve(__dirname, "..", "output")
 mkdirSync(outDir, { recursive: true })
 
-// 1. Server handler code
-const serverFiles = generateTsServer({
-  routers: [{ name: "Warehouses", routes: router }],
-  configuration: ServerConfig,
+// Security components
+const apiKeyAuth = apikey({
+  id: "xApiKey",
+  name: "X-API-Key",
+  description: "API Key 认证",
 })
-const serverOutDir = resolve(outDir, "server-handlers")
-rmSync(serverOutDir, { recursive: true, force: true })
-mkdirSync(serverOutDir, { recursive: true })
-for (const [path, content] of Object.entries(serverFiles)) {
-  const full = resolve(serverOutDir, path)
-  mkdirSync(dirname(full), { recursive: true })
-  writeFileSync(full, content, "utf-8")
-}
-console.log(`✅ server-handlers (${Object.keys(serverFiles).length} files)`)
 
-// 2. TypeScript client code
-const clientFiles = generateTsClient({
-  routers: [{ name: "Warehouses", routes: router }],
+const keycloak = openIdConnect({
+  id: "keycloak",
+  description: "Keycloak OIDC 认证",
+  scopes: ["read:warehouses", "write:warehouses"],
 })
-const clientOutDir = resolve(outDir, "api-client")
-rmSync(clientOutDir, { recursive: true, force: true })
-mkdirSync(clientOutDir, { recursive: true })
-for (const [path, content] of Object.entries(clientFiles)) {
-  const full = resolve(clientOutDir, path)
-  mkdirSync(dirname(full), { recursive: true })
-  writeFileSync(full, content, "utf-8")
+
+// Security policy
+const methodGetPostPutDelete: HttpMethod[] = ["GET", "POST", "PUT", "DELETE"]
+
+const securityPolicy: SecurityPolicyModel = {
+  name: "default",
+  paths: {
+    "^/warehouses$": {
+      pipeline: [
+        apiKeyAuth.apply(),
+        keycloak.apply("read:warehouses"),
+      ],
+    },
+    "^/warehouses/": {
+      methods: methodGetPostPutDelete,
+      pipeline: [
+        apiKeyAuth.apply(),
+        keycloak.apply("read:warehouses", "write:warehouses"),
+      ],
+    },
+  },
 }
-console.log(`✅ api-client (${Object.keys(clientFiles).length} files)`)
+
+const keycloakDeployment = deployOpenIdConnect({
+  component: keycloak,
+  issuer: "https://keycloak.example.com",
+})
+
+// 1. OpenAPI spec
+const { openapi } = generateOpenapi({
+  info: { title: "Warehouse API", version: "1.0.0", description: "仓库管理 CRUD API" },
+  servers: [{ url: "http://localhost:3000", description: "本地开发服务器" }],
+  routers: [{ name: "Warehouses", routes: router }],
+  security: {
+    policy: securityPolicy,
+    deployments: { keycloak: keycloakDeployment },
+  },
+})
+
+writeFileSync(resolve(outDir, "openapi.json"), JSON.stringify(openapi, null, 2), "utf-8")
+console.log("✅ openapi.json")
+
+// 2. Server config JSON Schema
+const configSchema = mergeJsonSchemas({ ServerConfig, PostgresConfig, SqliteConfig, AuthPassword: record({ id: "AuthPassword", properties: { method: literal("password"), username: string(), password: string() } }), AuthCert: record({ id: "AuthCert", properties: { method: literal("cert"), certFile: string(), keyFile: string() } }), RedisCache: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, optional: ["prefix"] }), MemoryCache: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, optional: ["ttl"] }) })
+
+writeFileSync(resolve(outDir, "server-config.schema.json"), JSON.stringify(configSchema, null, 2), "utf-8")
+console.log("✅ server-config.schema.json")
+
+// 3. Codegen model collection demo
+const allModels = [Warehouse, CreateWarehouse, UpdateWarehouse, ErrorResponse]
+const named = collectNamedModels(allModels)
+const ops = collectOperations([{ name: "Warehouses", routes: router }])
+
+console.log(`  → ${named.length} named models collected`)
+console.log(`  → ${ops.length} operations collected`)

@@ -20,7 +20,7 @@
     "dev": "tsdown --watch",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:openapi": "tsx ../specs-ts-codegen/src/test.ts"
+    "test:openapi": "tsx src/test.ts"
   },
   "dependencies": {
     "es-toolkit": "^1.47.0",
@@ -38,6 +38,7 @@
     "json-schema-typed": "^8.0.2",
     "temporal-polyfill": "^0.3.2",
     "tsdown": "^0.22.2",
+    "tsx": "^4.19.2",
     "type-fest": "^5.7.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
