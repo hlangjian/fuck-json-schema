@@ -422,7 +422,8 @@ function generateConfig(config: RecordModel<Record<string, Models>, string>): st
   out.push(`import { z } from "zod"`)
   out.push("")
 
-  out.push(`const _rootSchema = z.object({`)
+  const schemaName = camelCase(config.id) + "Schema"
+  out.push(`export const ${schemaName} = z.object({`)
   for (const v of root.envVars) {
     out.push(`  ${v.envName}: ${v.zodExpr},`)
   }
@@ -434,7 +435,7 @@ function generateConfig(config: RecordModel<Record<string, Models>, string>): st
   }
 
   out.push(`export function get${pascalCase(config.id)}(env: Record<string, string | undefined> = process.env) {`)
-  out.push(`  const e = _rootSchema.parse(env)`)
+  out.push(`  const e = ${schemaName}.parse(env)`)
   out.push(`  return {`)
   for (const f of root.fields) {
     out.push(`    ${f.name}: ${emitFieldExpr(f, "e", "env")},`)
@@ -452,12 +453,15 @@ function emitSwitch(sw: SwitchNode, out: string[]): void {
       emitSwitch(nestedSw, out)
     }
 
-    out.push(`function ${v.resolveFnName}(env: Record<string, string | undefined>) {`)
-    out.push(`  const e = z.object({`)
+    const schemaName = camelCase(v.resolveFnName.replace("_resolve", "")) + "ConfigSchema"
+    out.push(`export const ${schemaName} = z.object({`)
     for (const ev of v.envVars) {
-      out.push(`    ${ev.envName}: ${ev.zodExpr},`)
+      out.push(`  ${ev.envName}: ${ev.zodExpr},`)
     }
-    out.push(`  }).parse(env)`)
+    out.push(`})`)
+    out.push("")
+    out.push(`function ${v.resolveFnName}(env: Record<string, string | undefined>) {`)
+    out.push(`  const e = ${schemaName}.parse(env)`)
     out.push("")
     out.push(`  return {`)
     for (const f of v.fields) {
