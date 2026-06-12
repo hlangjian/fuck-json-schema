@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.8.2
+
+### Patch Changes
+
+- b352c24: Replace method shorthand with arrow function in generated Hono handler to prevent unbound-method lint warnings.
+
 ## 0.8.1
 
 ### Patch Changes
