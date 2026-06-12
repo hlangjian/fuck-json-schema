@@ -253,7 +253,7 @@ function generateOpFile(
   lines.push(`  return {`)
   lines.push(`    method: "${operation.method.toUpperCase()}",`)
   lines.push(`    path: "${toHonoPath(operation.path)}",`)
-  lines.push(`    async handler(context: Context): Promise<Response> {`)
+  lines.push(`    handler: async (context: Context): Promise<Response> => {`)
 
   const requestArgs: string[] = []
 
