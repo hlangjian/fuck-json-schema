@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.8.5
+
+### Patch Changes
+
+- 42febb8: Export named zod schemas from generated config.ts instead of inline objects.
+
 ## 0.8.4
 
 ### Patch Changes
