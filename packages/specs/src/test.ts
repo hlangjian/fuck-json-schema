@@ -12,7 +12,7 @@ import { generateTsClient } from "./codegen/ts-client"
 import { apikey, openIdConnect } from "./security"
 import type { SecurityPolicyModel } from "./security"
 import { deployOpenIdConnect } from "./deployment"
-import { array, datetime, enums, int32, record, set, string, taggedUnion, union } from "./types"
+import { array, datetime, enums, int32, literal, record, set, string, taggedUnion, union } from "./types"
 
 const Warehouse = record({
   id: "Warehouse",
@@ -25,7 +25,6 @@ const Warehouse = record({
     capacity: int32({ description: "最大容量" }),
     createdAt: datetime({ description: "创建时间" }),
   },
-  required: ["id", "name", "location", "capacity", "createdAt"],
 })
 
 const CreateWarehouse = record({
@@ -37,7 +36,6 @@ const CreateWarehouse = record({
     location: string({ description: "仓库位置" }),
     capacity: int32({ description: "最大容量" }),
   },
-  required: ["name", "location", "capacity"],
 })
 
 const UpdateWarehouse = record({
@@ -49,7 +47,6 @@ const UpdateWarehouse = record({
     location: string({ description: "仓库位置" }),
     capacity: int32({ description: "最大容量" }),
   },
-  required: ["name", "location", "capacity"],
 })
 
 const ErrorResponse = record({
@@ -58,44 +55,40 @@ const ErrorResponse = record({
   properties: {
     message: string({ description: "错误信息" }),
   },
-  required: ["message"],
 })
 
 // ---- Server config with taggedUnion, union, nested ----
 const PostgresConfig = record({
   id: "PostgresConfig",
   properties: {
+    type: literal("postgres"),
     host: string({ description: "PostgreSQL 主机地址" }),
     port: int32({ description: "PostgreSQL 端口" }),
     username: string({ description: "数据库用户名" }),
     password: string({ description: "数据库密码" }),
     auth: taggedUnion({
       id: "PostgresAuth",
-      variantKey: "method",
-      payloadKey: "credential",
+      discriminator: "method",
       variants: {
         password: record({
           id: "AuthPassword",
-          properties: { username: string(), password: string() },
-          required: ["username", "password"],
+          properties: { method: literal("password"), username: string(), password: string() },
         }),
         cert: record({
           id: "AuthCert",
-          properties: { certFile: string(), keyFile: string() },
-          required: ["certFile", "keyFile"],
+          properties: { method: literal("cert"), certFile: string(), keyFile: string() },
         }),
       },
     }),
   },
-  required: ["host", "port", "username", "password", "auth"],
 })
 
 const SqliteConfig = record({
   id: "SqliteConfig",
   properties: {
+    type: literal("sqlite"),
     name: string({ description: "SQLite 数据库文件名" }),
   },
-  required: ["name"],
 })
 
 const ServerConfig = record({
@@ -109,8 +102,7 @@ const ServerConfig = record({
     allowedPorts: set({ base: int32(), description: "允许的端口集合" }),
     database: taggedUnion({
       id: "DatabaseConfig",
-      variantKey: "type",
-      payloadKey: "config",
+      discriminator: "type",
       variants: {
         postgres: PostgresConfig,
         sqlite: SqliteConfig,
@@ -122,17 +114,17 @@ const ServerConfig = record({
         redis: record({
           id: "RedisCache",
           properties: { url: string(), prefix: string() },
-          required: ["url"],
+          optional: ["prefix"],
         }),
         memory: record({
           id: "MemoryCache",
           properties: { maxSize: int32(), ttl: int32() },
-          required: ["maxSize"],
+          optional: ["ttl"],
         }),
       },
     }),
   },
-  required: ["port", "host", "database"],
+  optional: ["logLevel", "tags", "allowedPorts", "cache"],
 })
 
 const router = {
@@ -296,7 +288,7 @@ for (const [path, content] of Object.entries(clientFiles)) {
 console.log(`✅ api-client (${Object.keys(clientFiles).length} files)`)
 
 // 4. Server config JSON Schema
-const configSchema = mergeJsonSchemas({ ServerConfig, PostgresConfig, SqliteConfig, AuthPassword: record({ id: "AuthPassword", properties: { username: string(), password: string() }, required: ["username", "password"] }), AuthCert: record({ id: "AuthCert", properties: { certFile: string(), keyFile: string() }, required: ["certFile", "keyFile"] }), RedisCache: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, required: ["url"] }), MemoryCache: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, required: ["maxSize"] }) })
+const configSchema = mergeJsonSchemas({ ServerConfig, PostgresConfig, SqliteConfig, AuthPassword: record({ id: "AuthPassword", properties: { method: literal("password"), username: string(), password: string() } }), AuthCert: record({ id: "AuthCert", properties: { method: literal("cert"), certFile: string(), keyFile: string() } }), RedisCache: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, optional: ["prefix"] }), MemoryCache: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, optional: ["ttl"] }) })
 
 writeFileSync(resolve(outDir, "server-config.schema.json"), JSON.stringify(configSchema, null, 2), "utf-8")
 console.log("✅ server-config.schema.json")

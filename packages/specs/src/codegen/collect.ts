@@ -53,8 +53,7 @@ export function collectNamedModels(
         deprecated: (model as any).deprecated,
         examples: model.examples,
         variants: model.variants as Record<string, Models>,
-        variantKey: model.variantKey as string,
-        payloadKey: model.payloadKey as string,
+        discriminator: model.discriminator as string,
       } as TaggedUnionDescriptor]
     }
     return acc
@@ -192,8 +191,7 @@ export function collectSchemaMap(ops: OperationDescriptor[]): SchemaMap {
       map.set(m.id, {
         kind: "taggedUnion",
         unionVariants: m.variants as Record<string, Models>,
-        variantKey: m.variantKey as string,
-        payloadKey: m.payloadKey as string,
+        discriminator: m.discriminator as string,
       } as SchemaInfo)
     }
   }

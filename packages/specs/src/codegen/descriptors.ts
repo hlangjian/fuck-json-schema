@@ -55,8 +55,7 @@ export interface UnionDescriptor extends ModelDescriptor {
 export interface TaggedUnionDescriptor extends ModelDescriptor {
   kind: "taggedUnion"
   variants: Record<string, Models>
-  variantKey: string
-  payloadKey: string
+  discriminator: string
 }
 
 export type AnyNamedDescriptor = RecordDescriptor | EnumsDescriptor | UnionDescriptor | TaggedUnionDescriptor
@@ -82,8 +81,7 @@ export interface SchemaInfo {
   fields?: Array<{ name: string; model: Models; required: boolean }>
   variants?: Record<string, string>
   unionVariants?: Record<string, Models>
-  variantKey?: string
-  payloadKey?: string
+  discriminator?: string
 }
 
 export type SchemaMap = Map<string, SchemaInfo>

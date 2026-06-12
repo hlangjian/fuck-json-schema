@@ -22,7 +22,6 @@ describe("generateJsonSchema", () => {
     const model = record({
       id: "User",
       properties: { name: string() },
-      required: ["name"],
     })
     const { jsonSchema } = generateJsonSchema({ model })
     const s = jsonSchema as JsonSchemaObject
@@ -39,7 +38,6 @@ describe("generateOpenapi", () => {
       id: int32(),
       name: string(),
     },
-    required: ["id", "name"],
   })
 
   const router = {

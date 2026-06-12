@@ -227,23 +227,13 @@ export function generateJsonSchema(options: GenerateJsonSchemaOptions): Generate
         registry: SchemaRegistry
         oneOf: JsonSchema[]
       }>(
-        (acc, [key, variantModel]) => {
+        (acc, [, variantModel]) => {
           const ref = acc.registry.getRef(variantModel)
 
           if (ref) {
             return {
               registry: acc.registry,
-              oneOf: [
-                ...acc.oneOf,
-                {
-                  type: "object",
-                  required: [model.variantKey, model.payloadKey],
-                  properties: {
-                    [model.variantKey]: { const: key },
-                    [model.payloadKey]: { $ref: ref },
-                  },
-                } satisfies JsonSchemaObject,
-              ],
+              oneOf: [...acc.oneOf, { $ref: ref }],
             }
           }
 
@@ -255,17 +245,7 @@ export function generateJsonSchema(options: GenerateJsonSchemaOptions): Generate
 
           return {
             registry: generated.registry,
-            oneOf: [
-              ...acc.oneOf,
-              {
-                type: "object",
-                required: [model.variantKey, model.payloadKey],
-                properties: {
-                  [model.variantKey]: { const: key },
-                  [model.payloadKey]: generated.jsonSchema,
-                },
-              } satisfies JsonSchemaObject,
-            ],
+            oneOf: [...acc.oneOf, generated.jsonSchema],
           }
         },
         { registry, oneOf: [] as JsonSchema[] },

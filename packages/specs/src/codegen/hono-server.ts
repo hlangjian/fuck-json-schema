@@ -50,7 +50,7 @@ function generateModels(schemaMap: SchemaMap, identifier: (s: string) => string,
       case "record": {
         lines.push(`export const ${schemaName} = z.object({`)
         for (const field of schemaInfo.fields!) {
-          lines.push(`  ${field.name}: ${toZod(field.model, schemaMap)}${field.required ? "" : ".optional()"},`)
+          lines.push(`  ${field.name}: ${toZod(field.model, schemaMap)}${field.required ? "" : optionalDefault(field.model)},`)
         }
         lines.push(`})`)
         lines.push("")
@@ -78,11 +78,10 @@ function generateModels(schemaMap: SchemaMap, identifier: (s: string) => string,
         break
       }
       case "taggedUnion": {
-        const variantKey = schemaInfo.variantKey!
-        const payloadKey = schemaInfo.payloadKey!
-        const unionItems = Object.entries(schemaInfo.unionVariants!).map(([key, v]) =>
-          `z.object({ ${JSON.stringify(variantKey)}: z.literal(${JSON.stringify(key)}), ${JSON.stringify(payloadKey)}: ${toZod(v as Models, schemaMap)} })`)
-        lines.push(`export const ${schemaName} = z.discriminatedUnion(${JSON.stringify(variantKey)}, [${unionItems.join(", ")}])`)
+        const discriminator = schemaInfo.discriminator!
+        const unionItems = Object.entries(schemaInfo.unionVariants!).map(([, v]) =>
+          `${toZod(v as Models, schemaMap)}`)
+        lines.push(`export const ${schemaName} = z.discriminatedUnion(${JSON.stringify(discriminator)}, [${unionItems.join(", ")}])`)
         lines.push(`export type ${tsName} = z.infer<typeof ${schemaName}>`)
         lines.push("")
         break
@@ -166,7 +165,7 @@ function generateOpFile(
   }
   if (hasQuery) {
     const fields = Object.entries(operation.queries)
-      .map(([key, query]) => `  ${key}: ${toZod(query.model, schemaMap)}${query.required ? "" : ".optional()"},`)
+      .map(([key, query]) => `  ${key}: ${toZod(query.model, schemaMap)}${query.required ? "" : optionalDefault(query.model)},`)
     lines.push(`const ${operationName}Query = z.object({`)
     lines.push(...fields)
     lines.push(`})`)
@@ -174,7 +173,7 @@ function generateOpFile(
   }
   if (hasHeaders) {
     const fields = Object.entries(operation.headers)
-      .map(([key, header]) => `  "${key}": ${toZod(header.model, schemaMap)}${header.required ? "" : ".optional()"},`)
+      .map(([key, header]) => `  "${key}": ${toZod(header.model, schemaMap)}${header.required ? "" : optionalDefault(header.model)},`)
     lines.push(`const ${operationName}Headers = z.object({`)
     lines.push(...fields)
     lines.push(`})`)
@@ -391,8 +390,7 @@ interface SwitchNode {
   resolveFnName: string
   dvEnvName: string
   dvZodExpr: string
-  variantKey: string
-  payloadKey: string | null
+  discriminator: string | null
   variants: VariantNode[]
 }
 
@@ -470,8 +468,8 @@ function emitSwitch(sw: SwitchNode, out: string[]): void {
   out.push(`function ${sw.resolveFnName}() {`)
   out.push(`  switch (_env.${sw.dvEnvName}) {`)
   for (const v of sw.variants) {
-    if (sw.payloadKey != null) {
-      out.push(`    case "${v.varName}": return { ${sw.variantKey}: "${v.varName}" as const, ${sw.payloadKey}: ${v.resolveFnName}() }`)
+    if (sw.discriminator != null) {
+      out.push(`    case "${v.varName}": return ${v.resolveFnName}()`)
     } else {
       out.push(`    case "${v.varName}": return { type: "${v.varName}" as const, ...${v.resolveFnName}() }`)
     }
@@ -539,8 +537,6 @@ function collectLevel(
         const dvZod = `z.enum(${JSON.stringify(Object.keys(model.variants))})`
         envVars.push({ envName: envPrefix, zodExpr: dvZod })
 
-        const variantKey = model.variantKey as string
-        const payloadKey = model.payloadKey as string
         const resolveFnName = `_resolve${pascalCase(propName)}`
 
         const variants: VariantNode[] = []
@@ -556,7 +552,7 @@ function collectLevel(
           })
         }
 
-        switches.push({ resolveFnName, dvEnvName: envPrefix, dvZodExpr: dvZod, variantKey, payloadKey, variants })
+        switches.push({ resolveFnName, dvEnvName: envPrefix, dvZodExpr: dvZod, discriminator: model.discriminator as string, variants })
         fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName })
         break
       }
@@ -580,7 +576,7 @@ function collectLevel(
           })
         }
 
-        switches.push({ resolveFnName, dvEnvName, dvZodExpr: dvZod, variantKey: "type", payloadKey: null, variants })
+        switches.push({ resolveFnName, dvEnvName, dvZodExpr: dvZod, discriminator: null, variants })
         fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName })
         break
       }
@@ -678,6 +674,13 @@ function contentTypeForKind(kind: string): string {
 
 // ---- helpers ----
 
+function optionalDefault(model: Models): string {
+  if ("default" in model && model.default != null) {
+    return `.optional().default(${JSON.stringify(model.default)})`
+  }
+  return ".optional()"
+}
+
 function toZod(model: Models, schemaMap: SchemaMap): string {
   switch (model.kind) {
     case "int32":    return "z.coerce.number().int()"
@@ -707,9 +710,10 @@ function toZod(model: Models, schemaMap: SchemaMap): string {
     case "taggedUnion": {
       const schemaInfo = schemaMap.get(model.id)
       if (schemaInfo?.unionVariants) return camelCase(model.id) + "Schema"
-      const unionItems = Object.entries(model.variants).map(([key, v]) =>
-        `z.object({ ${JSON.stringify(model.variantKey)}: z.literal(${JSON.stringify(key)}), ${JSON.stringify(model.payloadKey)}: ${toZod(v as Models, schemaMap)} })`)
-      return `z.discriminatedUnion(${JSON.stringify(model.variantKey)}, [${unionItems.join(", ")}])`
+      const discriminator = model.discriminator as string
+      const unionItems = Object.values(model.variants).map((v) =>
+        `${toZod(v as Models, schemaMap)}`)
+      return `z.discriminatedUnion(${JSON.stringify(discriminator)}, [${unionItems.join(", ")}])`
     }
     default: return "z.unknown()"
   }

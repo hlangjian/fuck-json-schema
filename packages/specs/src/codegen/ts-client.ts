@@ -44,7 +44,7 @@ function generateModels(schemaMap: SchemaMap, identifier: (s: string) => string,
       case "record": {
         lines.push(`export const ${schemaName} = z.object({`)
         for (const f of schemaInfo.fields!) {
-          lines.push(`  ${f.name}: ${toZod(f.model, schemaMap)}${f.required ? "" : ".optional()"},`)
+          lines.push(`  ${f.name}: ${toZod(f.model, schemaMap)}${f.required ? "" : optionalDefault(f.model)},`)
         }
         lines.push(`})`)
         lines.push("")
@@ -72,11 +72,10 @@ function generateModels(schemaMap: SchemaMap, identifier: (s: string) => string,
         break
       }
       case "taggedUnion": {
-        const vk = schemaInfo.variantKey!
-        const pk = schemaInfo.payloadKey!
-        const items = Object.entries(schemaInfo.unionVariants!).map(([key, v]) =>
-          `z.object({ ${JSON.stringify(vk)}: z.literal(${JSON.stringify(key)}), ${JSON.stringify(pk)}: ${toZod(v as Models, schemaMap)} })`)
-        lines.push(`export const ${schemaName} = z.discriminatedUnion(${JSON.stringify(vk)}, [${items.join(", ")}])`)
+        const discriminator = schemaInfo.discriminator!
+        const items = Object.entries(schemaInfo.unionVariants!).map(([, v]) =>
+          `${toZod(v as Models, schemaMap)}`)
+        lines.push(`export const ${schemaName} = z.discriminatedUnion(${JSON.stringify(discriminator)}, [${items.join(", ")}])`)
         lines.push(`export type ${tsName} = z.infer<typeof ${schemaName}>`)
         lines.push("")
         break
@@ -280,6 +279,13 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
 
 // ---- helpers ----
 
+function optionalDefault(model: Models): string {
+  if ("default" in model && model.default != null) {
+    return `.optional().default(${JSON.stringify(model.default)})`
+  }
+  return ".optional()"
+}
+
 function toTs(model: Models, schemaMap: SchemaMap, identifier: (s: string) => string, namespace?: string): string {
   void namespace
   switch (model.kind) {
@@ -338,9 +344,10 @@ function toZod(model: Models, schemaMap: SchemaMap): string {
     case "taggedUnion": {
       const schemaInfo = schemaMap.get(model.id)
       if (schemaInfo?.unionVariants) return camelCase(model.id) + "Schema"
-      const items = Object.entries(model.variants).map(([key, v]) =>
-        `z.object({ ${JSON.stringify(model.variantKey)}: z.literal(${JSON.stringify(key)}), ${JSON.stringify(model.payloadKey)}: ${toZod(v as Models, schemaMap)} })`)
-      return `z.discriminatedUnion(${JSON.stringify(model.variantKey)}, [${items.join(", ")}])`
+      const discriminator = model.discriminator as string
+      const items = Object.values(model.variants).map((v) =>
+        `${toZod(v as Models, schemaMap)}`)
+      return `z.discriminatedUnion(${JSON.stringify(discriminator)}, [${items.join(", ")}])`
     }
     default: return "z.unknown()"
   }

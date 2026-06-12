@@ -6,6 +6,7 @@ export interface BasicModel<T> {
   description?: string
   examples?: T[]
   schema?: StandardTypedV1<T, T>
+  default?: T
 }
 
 export interface Int32Model extends BasicModel<number> {
@@ -62,32 +63,45 @@ export interface UnionModel<T extends Record<string, Models>> extends BasicModel
   id: string
 }
 
-export type InferUnion<T extends Record<string, Models>> = {
-  [key in keyof T]: { [k in key]: StandardTypedV1.InferOutput<NonNullable<T[key]["schema"]>> }
-}[keyof T]
+export type InferUnion<T extends Record<string, Models>> = string extends keyof T
+  ? any
+  : {
+      [key in keyof T]: { [k in key]: StandardTypedV1.InferOutput<NonNullable<T[key]["schema"]>> }
+    }[keyof T]
 
 export interface TaggedUnionModel<
   K extends string,
-  D extends string,
-  V extends Record<string, Models>,
-> extends BasicModel<InferTaggedUnion<K, D, V>> {
+  Variants extends Record<string, RecordModel<Record<string, Models>, string>>,
+> extends BasicModel<InferTaggedUnion<K, Variants>> {
   kind: "taggedUnion"
-  variants: V
-  variantKey: K
-  payloadKey: D
+  discriminator: K
+  variants: Variants
   id: string
 }
 
-interface TaggedUnionModelOptions<K extends string, D extends string, V extends Record<string, Models>> extends Omit<
-  TaggedUnionModel<K, D, V>,
-  "kind"
-> {}
+export type InferTaggedUnion<
+  K extends string,
+  Variants extends Record<string, RecordModel<Record<string, Models>, string>>,
+> = string extends K
+  ? any
+  : {
+      [key in keyof Variants]: StandardTypedV1.InferOutput<NonNullable<Variants[key]["schema"]>>
+    }[keyof Variants]
 
-export type InferTaggedUnion<K extends string, D extends string, V extends Record<string, Models>> = {
-  [key in keyof V]: {
-    [k in K | D]: k extends K ? key : k extends D ? StandardTypedV1.InferOutput<NonNullable<V[key]["schema"]>> : never
-  }
-}[keyof V]
+export type ValidateTaggedUnion<
+  K extends string,
+  V extends Record<string, RecordModel<Record<string, Models>, string>>,
+> = {
+  [Key in keyof V as V[Key] extends RecordModel<infer Properties, infer Required>
+    ? K extends keyof Properties
+      ? Properties[K] extends LiteralModel<Key & string>
+        ? K extends Required
+          ? never
+          : `[taggedUnion] variant "${Key & string}" → discriminator "${K}" 不在 required 中`
+        : `[taggedUnion] variant "${Key & string}" → "${K}" 必须为 literal("${Key & string}")`
+      : `[taggedUnion] variant "${Key & string}" → 缺少 discriminator "${K}"`
+    : never]: string
+}
 
 export interface LiteralModel<T extends string | number | boolean> extends BasicModel<T> {
   kind: "literal"
@@ -129,7 +143,7 @@ export type Models =
   | MapModel<any>
   | RecordModel<Record<string, Models>, string>
   | UnionModel<Record<string, Models>>
-  | TaggedUnionModel<string, string, Record<string, Models>>
+  | TaggedUnionModel<string, Record<string, RecordModel<Record<string, Models>, string>>>
   | LiteralModel<string | number | boolean>
   | NullModel
   | EnumsModel<{ [key: string]: string }>
@@ -173,19 +187,35 @@ export function map<T extends Models>(options: OptionsOf<MapModel<T>>): MapModel
   return { kind: "map", ...options }
 }
 
-export function record<T extends Record<string, Models>, R extends keyof T & string>(
-  options: OptionsOf<RecordModel<T, R>>,
-): RecordModel<T, R> {
-  return { kind: "record", ...options }
+export interface RecordModelOptions<
+  T extends Record<string, Models>,
+  O extends keyof T & string = never,
+> extends Omit<RecordModel<T, Exclude<keyof T & string, O>>, "kind" | "required"> {
+  optional?: O[]
+}
+
+export function record<
+  T extends Record<string, Models>,
+  const O extends keyof T & string = never,
+>(
+  options: RecordModelOptions<T, O>,
+): RecordModel<T, Exclude<keyof T & string, O>> {
+  const { optional, ...rest } = options
+  const allKeys = Object.keys(options.properties) as (keyof T & string)[]
+  const required = allKeys.filter((k) => !(optional ?? []).includes(k as any))
+  return { kind: "record", ...rest, required } as any
 }
 
 export function union<T extends Record<string, Models>>(options: OptionsOf<UnionModel<T>>): UnionModel<T> {
   return { kind: "union", ...options }
 }
 
-export function taggedUnion<K extends string, D extends string, V extends Record<string, Models>>(
-  options: TaggedUnionModelOptions<K, D, V>,
-): TaggedUnionModel<K, D, V> {
+export function taggedUnion<
+  K extends string,
+  Variants extends Record<string, RecordModel<Record<string, Models>, string>>,
+>(
+  options: Omit<TaggedUnionModel<K, Variants>, "kind"> & ValidateTaggedUnion<K, Variants>,
+): TaggedUnionModel<K, Variants> {
   return { kind: "taggedUnion", ...options }
 }
 
