@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { binary as binaryResponse, json, route } from "@huanglangjian/specs"
+import { binary as binaryResponse, json, route, routerModel } from "@huanglangjian/specs"
 import { array, datetime, enums, int32, literal, record, set, string, taggedUnion, union } from "@huanglangjian/specs"
 import { generateTsServer } from "./server"
 import { generateTsClient } from "./client"
@@ -119,13 +119,14 @@ const ServerConfig = record({
   optional: ["logLevel", "tags", "allowedPorts", "cache"],
 })
 
-const router = {
-  listWarehouses: route({
+const router = routerModel({
+  name: "Warehouses",
+  routes: {
+    listWarehouses: route({
     method: "GET",
     path: "/warehouses",
     summary: "获取仓库列表",
     description: "返回所有仓库的列表",
-    tags: ["Warehouses"],
     responses: {
       "200": json({ summary: "仓库列表", body: array({ base: Warehouse }) }),
     },
@@ -135,7 +136,6 @@ const router = {
     method: "GET",
     path: "/warehouses/{id}",
     summary: "获取单个仓库",
-    tags: ["Warehouses"],
     description: "根据ID获取指定仓库",
     variables: { id: int32({ description: "仓库ID" }) },
     responses: {
@@ -149,7 +149,6 @@ const router = {
     path: "/warehouses",
     summary: "创建仓库",
     description: "创建一个新仓库",
-    tags: ["Warehouses"],
     body: CreateWarehouse,
     responses: {
       "201": json({ summary: "创建成功", body: Warehouse }),
@@ -161,7 +160,6 @@ const router = {
     method: "PUT",
     path: "/warehouses/{id}",
     summary: "更新仓库",
-    tags: ["Warehouses"],
     description: "更新指定仓库的信息",
     variables: { id: int32({ description: "仓库ID" }) },
     body: UpdateWarehouse,
@@ -175,7 +173,6 @@ const router = {
     method: "DELETE",
     path: "/warehouses/{id}",
     summary: "删除仓库",
-    tags: ["Warehouses"],
     description: "删除指定仓库",
     variables: { id: int32({ description: "仓库ID" }) },
     responses: {
@@ -188,13 +185,13 @@ const router = {
     method: "GET",
     path: "/warehouses/export",
     summary: "导出仓库数据",
-    tags: ["Warehouses"],
     description: "以二进制格式导出所有仓库数据",
     responses: {
       "200": binaryResponse({ summary: "导出文件" }),
     },
   }),
-}
+  },
+})
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const outDir = resolve(__dirname, "..", "output")
@@ -202,7 +199,7 @@ mkdirSync(outDir, { recursive: true })
 
 // 1. Server handler code
 const serverFiles = generateTsServer({
-  routers: [{ name: "Warehouses", routes: router }],
+  routers: [router],
   configuration: ServerConfig,
 })
 const serverOutDir = resolve(outDir, "server-handlers")
@@ -217,7 +214,7 @@ console.log(`✅ server-handlers (${Object.keys(serverFiles).length} files)`)
 
 // 2. TypeScript client code
 const clientFiles = generateTsClient({
-  routers: [{ name: "Warehouses", routes: router }],
+  routers: [router],
 })
 const clientOutDir = resolve(outDir, "api-client")
 rmSync(clientOutDir, { recursive: true, force: true })

@@ -18,6 +18,10 @@ export function generateTsServer(options: TsServerOptions): Record<string, strin
   const operations = collectOperations(routers)
   const schemaMap = collectSchemaMap(operations)
 
+  if (configuration) {
+    addConfigToSchemaMap(configuration, schemaMap)
+  }
+
   const files: Record<string, string> = {}
 
   files["models.ts"] = generateModels(schemaMap, identifier, namespace)
@@ -34,7 +38,7 @@ export function generateTsServer(options: TsServerOptions): Record<string, strin
   files["index.ts"] = generateIndex(operations, identifier)
 
   if (configuration) {
-    files["config.ts"] = generateConfig(configuration)
+    files["config.ts"] = generateConfig(configuration, identifier)
   }
 
   return files
@@ -372,17 +376,60 @@ interface CollectResult {
 
 let _switchIdCounter = 0
 
-function generateConfig(config: RecordModel<Record<string, Models>, string>): string {
+function addConfigToSchemaMap(config: Models, schemaMap: SchemaMap): void {
+  const seen = new Set<Models>()
+  const walk = (m: Models) => {
+    if (seen.has(m)) return
+    seen.add(m)
+
+    if ("id" in m && !schemaMap.has(m.id)) {
+      if (m.kind === "record") {
+        const rec = m as RecordModel<Record<string, Models>, string>
+        schemaMap.set(rec.id, {
+          kind: "record",
+          fields: Object.entries(rec.properties).map(([name, p]) => ({
+            name,
+            model: p as Models,
+            required: (rec.required as string[]).includes(name),
+          })),
+        })
+      } else if (m.kind === "enums") {
+        schemaMap.set(m.id, { kind: "enums", variants: m.variants as Record<string, string> })
+      } else if (m.kind === "union") {
+        schemaMap.set(m.id, { kind: "union", unionVariants: m.variants as Record<string, Models> })
+      } else if (m.kind === "taggedUnion") {
+        schemaMap.set(m.id, {
+          kind: "taggedUnion",
+          unionVariants: m.variants as Record<string, Models>,
+          discriminator: m.discriminator as string,
+        })
+      }
+    }
+
+    if (m.kind === "record") {
+      Object.values((m as RecordModel<Record<string, Models>, string>).properties).forEach((v) => walk(v as Models))
+    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+      Object.values((m as { variants: Record<string, Models> }).variants).forEach((v) => walk(v as Models))
+    } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
+      walk((m as { base: Models }).base)
+    }
+  }
+  walk(config)
+}
+
+function generateConfig(config: RecordModel<Record<string, Models>, string>, identifier: (s: string) => string): string {
   _switchIdCounter = 0
   const root = collectLevel(config.properties as Record<string, Models>, config.required as string[], "")
 
   const out: string[] = []
+  const configTypeName = identifier(config.id)
 
   out.push(`import { z } from "zod"`)
+  out.push(`import type { ${configTypeName} } from "../models"`)
   out.push("")
 
   const schemaName = camelCase(config.id) + "Schema"
-  out.push(`export const ${schemaName} = z.object({`)
+  out.push(`export const ${schemaName}Env = z.object({`)
   for (const v of root.envVars) {
     out.push(`  ${v.envName}: ${v.zodExpr},`)
   }
@@ -393,8 +440,8 @@ function generateConfig(config: RecordModel<Record<string, Models>, string>): st
     emitSwitch(sw, out)
   }
 
-  out.push(`export function get${pascalCase(config.id)}(env: Record<string, string | undefined> = process.env) {`)
-  out.push(`  const e = ${schemaName}.parse(env)`)
+  out.push(`export function get${pascalCase(config.id)}(env: Record<string, string | undefined> = process.env): ${configTypeName} {`)
+  out.push(`  const e = ${schemaName}Env.parse(env)`)
   out.push(`  return {`)
   for (const f of root.fields) {
     out.push(`    ${f.name}: ${emitFieldExpr(f, "e", "env")},`)

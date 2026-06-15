@@ -1,0 +1,177 @@
+# Usage example
+
+Complete warehouse CRUD example:
+
+```ts
+import { int32, string, datetime, array, record, enums, set, literal, taggedUnion, union } from "@huanglangjian/specs"
+import { route, json, binary as binaryResponse, routerModel } from "@huanglangjian/specs"
+import { generateOpenapi } from "@huanglangjian/specs"
+import { mergeJsonSchemas } from "@huanglangjian/specs"
+import { apikey, openIdConnect } from "@huanglangjian/specs"
+import { deployOpenIdConnect } from "@huanglangjian/specs"
+
+// 1. Define data models
+const Warehouse = record({
+  id: "Warehouse",
+  title: "仓库",
+  properties: {
+    id: int32({ description: "仓库ID" }),
+    name: string({ description: "仓库名称" }),
+    location: string({ description: "仓库位置" }),
+    capacity: int32({ description: "最大容量" }),
+    createdAt: datetime({ description: "创建时间" }),
+  },
+})
+
+const CreateWarehouse = record({
+  id: "CreateWarehouse",
+  properties: {
+    name: string({ description: "仓库名称" }),
+    location: string({ description: "仓库位置" }),
+    capacity: int32({ description: "最大容量" }),
+  },
+})
+
+const UpdateWarehouse = record({
+  id: "UpdateWarehouse",
+  properties: {
+    name: string(),
+    location: string(),
+    capacity: int32(),
+  },
+})
+
+const ErrorResponse = record({
+  id: "ErrorResponse",
+  properties: { message: string({ description: "错误信息" }) },
+})
+
+// 2. Define server config with complex types
+const PostgresConfig = record({
+  id: "PostgresConfig",
+  properties: {
+    type: literal("postgres"),
+    host: string(), port: int32(), username: string(), password: string(),
+  },
+})
+
+const SqliteConfig = record({
+  id: "SqliteConfig",
+  properties: { type: literal("sqlite"), name: string() },
+})
+
+const ServerConfig = record({
+  id: "ServerConfig",
+  properties: {
+    port: int32({ description: "监听端口" }),
+    host: string({ description: "监听地址" }),
+    logLevel: enums({
+      id: "LogLevel",
+      variants: { debug: "debug", info: "info", warn: "warn", error: "error" },
+    }),
+    database: taggedUnion({
+      id: "DatabaseConfig",
+      discriminator: "type",
+      variants: {
+        postgres: PostgresConfig,
+        sqlite: SqliteConfig,
+      },
+    }),
+    cache: union({
+      id: "CacheConfig",
+      variants: {
+        redis: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, optional: ["prefix"] }),
+        memory: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, optional: ["ttl"] }),
+      },
+    }),
+  },
+  optional: ["logLevel", "cache"],
+})
+
+// 3. Define routes — use routerModel() factory, no tags needed (auto from name)
+const router = routerModel({
+  name: "Warehouses",
+  routes: {
+    listWarehouses: route({
+      method: "GET",
+      path: "/warehouses",
+      summary: "获取仓库列表",
+      responses: { "200": json({ summary: "仓库列表", body: array({ base: Warehouse }) }) },
+    }),
+    getWarehouse: route({
+      method: "GET",
+      path: "/warehouses/{id}",
+      variables: { id: int32({ description: "仓库ID" }) },
+      responses: {
+        "200": json({ summary: "仓库详情", body: Warehouse }),
+        "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+      },
+    }),
+    createWarehouse: route({
+      method: "POST",
+      path: "/warehouses",
+      body: CreateWarehouse,
+      responses: {
+        "201": json({ summary: "创建成功", body: Warehouse }),
+        "400": json({ summary: "请求参数错误", body: ErrorResponse }),
+      },
+    }),
+    updateWarehouse: route({
+      method: "PUT",
+      path: "/warehouses/{id}",
+      variables: { id: int32() },
+      body: UpdateWarehouse,
+      responses: {
+        "200": json({ summary: "更新成功", body: Warehouse }),
+        "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+      },
+    }),
+    deleteWarehouse: route({
+      method: "DELETE",
+      path: "/warehouses/{id}",
+      variables: { id: int32() },
+      responses: {
+        "204": json({ summary: "删除成功" }),
+        "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+      },
+    }),
+    exportWarehouses: route({
+      method: "GET",
+      path: "/warehouses/export",
+      responses: { "200": binaryResponse({ summary: "导出文件" }) },
+    }),
+  },
+})
+
+// 4. Security
+const apiKeyAuth = apikey({ id: "xApiKey", name: "X-API-Key" })
+const keycloak = openIdConnect({ id: "keycloak", scopes: ["read:warehouses", "write:warehouses"] })
+
+const securityPolicy = {
+  name: "default",
+  paths: {
+    "^/warehouses$": { pipeline: [apiKeyAuth.apply(), keycloak.apply("read:warehouses")] },
+    "^/warehouses/": {
+      methods: ["GET", "POST", "PUT", "DELETE"],
+      pipeline: [apiKeyAuth.apply(), keycloak.apply("read:warehouses", "write:warehouses")],
+    },
+  },
+}
+
+const keycloakDeployment = deployOpenIdConnect({ component: keycloak, issuer: "https://keycloak.example.com" })
+
+// 5. Generate OpenAPI spec
+const { openapi } = generateOpenapi({
+  info: { title: "Warehouse API", version: "1.0.0" },
+  routers: [router],
+  security: { policy: securityPolicy, deployments: { keycloak: keycloakDeployment } },
+})
+// → write: JSON.stringify(openapi, null, 2)
+
+// 6. Generate server config JSON Schema
+const configSchema = mergeJsonSchemas({
+  ServerConfig, PostgresConfig, SqliteConfig,
+  // ... all nested named records
+})
+// → JSON Schema with $schema + $defs
+```

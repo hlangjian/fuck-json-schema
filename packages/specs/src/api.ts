@@ -204,3 +204,7 @@ export type BinaryLikeContentType =
   | "video/webm"
 
 export type FormLikeContentType = (string & {}) | "application/x-www-form-urlencoded" | "multipart/form-data"
+
+export function routerModel(options: { name: string; basePath?: string; routes: RouterModel["routes"] }): RouterModel {
+  return options
+}
