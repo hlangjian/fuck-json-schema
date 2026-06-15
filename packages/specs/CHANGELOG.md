@@ -1,5 +1,16 @@
 # @huanglangjian/specs
 
+## 0.11.0
+
+### Minor Changes
+
+- 05a1df3: refactor: replace mergeJsonSchemas with auto-discovering generateJsonSchema
+
+  - `mergeJsonSchemas` removed — replaced by `generateJsonSchema(model)` which auto-discovers named sub-models
+  - `buildJsonSchema` (internal) replaces old single-model `generateJsonSchema` with `toJsonSchema` callback for library-specific JSON Schema generation
+  - `SchemaRegistry` gains `getDefs()` to collect registered model schemas
+  - Chinese JSDoc on `toJsonSchema` explaining StandardTypedV1 / StandardSchemaV1 / StandardJSONSchemaV1 bridge
+
 ## 0.10.0
 
 ### Minor Changes
