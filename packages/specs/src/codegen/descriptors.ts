@@ -61,6 +61,7 @@ export type AnyNamedDescriptor = RecordDescriptor | EnumsDescriptor | UnionDescr
 export interface OperationDescriptor {
   id: string
   group: string
+  groupDescription?: string
   method: HttpMethod
   path: string
   summary?: string

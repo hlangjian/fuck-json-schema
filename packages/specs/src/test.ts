@@ -16,11 +16,12 @@ const Warehouse = record({
   id: "Warehouse",
   title: "仓库",
   description: "仓库信息",
+  examples: [{ id: 1, name: "默认仓库", location: "北京", capacity: 1000, createdAt: "2024-01-01T00:00:00Z" }],
   properties: {
     id: int32({ description: "仓库ID" }),
     name: string({ description: "仓库名称" }),
     location: string({ description: "仓库位置" }),
-    capacity: int32({ description: "最大容量" }),
+    capacity: int32({ description: "最大容量", default: 100 }),
     createdAt: datetime({ description: "创建时间" }),
   },
 })
@@ -52,6 +53,17 @@ const ErrorResponse = record({
   title: "错误响应",
   properties: {
     message: string({ description: "错误信息" }),
+  },
+})
+
+const OldWarehouse = record({
+  id: "OldWarehouse",
+  title: "旧仓库",
+  description: "已废弃的仓库模型",
+  deprecated: true,
+  properties: {
+    name: string({ description: "仓库名称" }),
+    legacyCode: string({ description: "旧编码", deprecated: true }),
   },
 })
 
@@ -92,6 +104,7 @@ const SqliteConfig = record({
 const ServerConfig = record({
   id: "ServerConfig",
   title: "服务端配置",
+  description: "服务端运行时配置",
   properties: {
     port: int32({ description: "监听端口" }),
     host: string({ description: "监听地址" }),
@@ -127,6 +140,7 @@ const ServerConfig = record({
 
 const router = routerModel({
   name: "Warehouses",
+  description: "仓库管理 API 集合",
   routes: {
     listWarehouses: route({
     method: "GET",
@@ -192,8 +206,46 @@ const router = routerModel({
     path: "/warehouses/export",
     summary: "导出仓库数据",
     description: "以二进制格式导出所有仓库数据",
+    deprecated: true,
     responses: {
       "200": binaryResponse({ summary: "导出文件" }),
+    },
+  }),
+  searchWarehouses: route({
+    method: "GET",
+    path: "/warehouses/search",
+    summary: "搜索仓库",
+    description: "按条件搜索仓库列表",
+    queries: record({
+      id: "WarehouseQuery",
+      properties: {
+        keyword: string({ description: "搜索关键词" }),
+        type: string({ description: "仓库类型" }),
+      },
+      optional: ["keyword", "type"],
+    }),
+    headers: record({
+      id: "SearchHeaders",
+      properties: {
+        "x-trace-id": string({ description: "链路追踪ID" }),
+        "x-tenant-id": string({ description: "租户ID" }),
+      },
+      optional: ["x-trace-id"],
+    }),
+    responses: {
+      "200": json({ summary: "搜索结果", body: array({ base: Warehouse }) }),
+    },
+  }),
+  getOldWarehouse: route({
+    method: "GET",
+    path: "/warehouses/old/{id}",
+    summary: "获取旧仓库",
+    description: "根据ID获取旧仓库（已废弃）",
+    deprecated: true,
+    variables: { id: int32({ description: "仓库ID" }) },
+    responses: {
+      "200": json({ summary: "旧仓库详情", body: OldWarehouse }),
+      "404": json({ summary: "仓库不存在", body: ErrorResponse }),
     },
   }),
   },
@@ -264,7 +316,7 @@ writeFileSync(resolve(outDir, "server-config.schema.json"), JSON.stringify(confi
 console.log("✅ server-config.schema.json")
 
 // 3. Codegen model collection demo
-const allModels = [Warehouse, CreateWarehouse, UpdateWarehouse, ErrorResponse]
+const allModels = [Warehouse, CreateWarehouse, UpdateWarehouse, ErrorResponse, OldWarehouse]
 const named = collectNamedModels(allModels)
 const ops = collectOperations([router])
 

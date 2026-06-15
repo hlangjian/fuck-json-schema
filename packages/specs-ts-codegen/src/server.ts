@@ -5,7 +5,7 @@ import { groupBy } from "@huanglangjian/specs"
 import { camelCase, pascalCase, snakeCase } from "text-case"
 
 import { resolveLib, type ValidationLib } from "./validation-lib"
-import { generateModels, toSchema, toSchemaEnv, toTs, toColonPath, contentTypeForKind, modelDefault } from "./shared"
+import { generateModels, toSchema, toSchemaEnv, toTs, toColonPath, contentTypeForKind, modelDefault, fieldJsdoc } from "./shared"
 
 export interface TsServerOptions {
   routers: RouterModel[]
@@ -152,35 +152,40 @@ function generateOpFile(
   lines.push(`export namespace ${OperationName}Operation {`)
   lines.push("")
 
-  const requestFields: string[] = []
+  lines.push(`  export interface Request {`)
   if (hasParams) {
-    const field = Object.entries(operation.pathVariables)
-      .map(([key, value]) => `${key}: ${toTs(value.model, schemaMap, identifier, namespace)}`)
-      .join("; ")
-    requestFields.push(`params: { ${field} }`)
+    lines.push(`    params: {`)
+    for (const [key, value] of Object.entries(operation.pathVariables)) {
+      const doc = fieldJsdoc(value.model, "      ")
+      if (doc) lines.push(doc)
+      lines.push(`      ${key}: ${toTs(value.model, schemaMap, identifier, namespace)};`)
+    }
+    lines.push(`    };`)
   }
   if (hasQuery) {
-    const field = Object.entries(operation.queries)
-      .map(
-        ([key, query]) => `${key}${query.required ? "" : "?"}: ${toTs(query.model, schemaMap, identifier, namespace)}`,
-      )
-      .join("; ")
-    requestFields.push(`query: { ${field} }`)
+    lines.push(`    query: {`)
+    for (const [key, query] of Object.entries(operation.queries)) {
+      const doc = fieldJsdoc(query.model, "      ")
+      if (doc) lines.push(doc)
+      lines.push(`      ${key}${query.required ? "" : "?"}: ${toTs(query.model, schemaMap, identifier, namespace)};`)
+    }
+    lines.push(`    };`)
   }
   if (hasHeaders) {
-    const field = Object.entries(operation.headers)
-      .map(
-        ([key, header]) =>
-          `"${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)}`,
-      )
-      .join("; ")
-    requestFields.push(`headers: { ${field} }`)
+    lines.push(`    headers: {`)
+    for (const [key, header] of Object.entries(operation.headers)) {
+      const doc = fieldJsdoc(header.model, "      ")
+      if (doc) lines.push(doc)
+      lines.push(`      "${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)};`)
+    }
+    lines.push(`    };`)
   }
   if (hasBody) {
-    requestFields.push(`body: ${toTs(operation.requestModel!, schemaMap, identifier, namespace)}`)
+    const bodyModel = operation.requestModel!
+    const bodyDoc = fieldJsdoc(bodyModel, "    ")
+    if (bodyDoc) lines.push(bodyDoc)
+    lines.push(`    body: ${toTs(bodyModel, schemaMap, identifier, namespace)};`)
   }
-  lines.push(`  export interface Request {`)
-  for (const field of requestFields) lines.push(`    ${field}`)
   lines.push(`  }`)
   lines.push("")
 
@@ -218,7 +223,7 @@ function generateOpFile(
   }
   lines.push("")
 
-  if (requestFields.length > 0) {
+  if (hasParams || hasQuery || hasBody || hasHeaders) {
     lines.push(`  export type Handler = (req: Request) => Promise<Response>`)
   } else {
     lines.push(`  export type Handler = () => Promise<Response>`)
@@ -233,6 +238,7 @@ function generateOpFile(
     lines.push("")
   }
 
+  if (opDoc) lines.push(opDoc)
   lines.push(`export function ${operationName}(handler: ${OperationName}Operation.Handler) {`)
   lines.push(`  return {`)
   lines.push(`    method: "${operation.method.toUpperCase()}",`)
@@ -330,6 +336,12 @@ function generateIndex(operations: OperationDescriptor[]): string {
 
   for (const [group, groupOps] of Object.entries(groups)) {
     const groupPascal = pascalCase(group)
+    const groupDesc = groupOps[0]?.groupDescription
+    if (groupDesc) {
+      lines.push(`/**`)
+      lines.push(` * @description ${groupDesc}`)
+      lines.push(` */`)
+    }
     lines.push(`export interface ${groupPascal}Handlers {`)
     for (const operation of groupOps) {
       const operationName = camelCase(operation.id)
@@ -449,6 +461,11 @@ function generateConfig(
   }
 
   const configPascal = pascalCase(config.id)
+  if (config.description) {
+    out.push(`/**`)
+    out.push(` * @description ${config.description}`)
+    out.push(` */`)
+  }
   out.push(
     `export function get${configPascal}(env: Record<string, string | undefined> = process.env): ${configTypeName} {`,
   )

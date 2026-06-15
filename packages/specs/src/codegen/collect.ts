@@ -152,6 +152,7 @@ export function collectOperations(routers: RouterModel[]): OperationDescriptor[]
       return {
         id,
         group: routerModel.name,
+        groupDescription: routerModel.description,
         method: route.method,
         path: joinPath(basePath, route.path),
         summary: route.summary,

@@ -33,12 +33,14 @@ function jsdocBlock(model: {
   return `/**\n * ${tags.join("\n * ")}\n */`
 }
 
-function fieldJsdoc(field: { title?: string; description?: string; deprecated?: boolean }): string {
+export function fieldJsdoc(field: { title?: string; description?: string; deprecated?: boolean; default?: unknown }, indent = ""): string | null {
+  const desc = field.description || field.title
+  if (!desc && !field.deprecated && field.default === undefined) return null
   const parts: string[] = []
-  if (field.title) parts.push(field.title)
-  if (field.description) parts.push(field.description)
+  if (desc) parts.push(`@description ${desc}`)
   if (field.deprecated) parts.push("@deprecated")
-  return parts.length > 0 ? `/** ${parts.join(" — ")} */ ` : ""
+  if (field.default !== undefined) parts.push(`@default ${JSON.stringify(field.default)}`)
+  return `${indent}/**\n${indent} * ${parts.join(`\n${indent} * `)}\n${indent} */`
 }
 
 export function generateModels(
@@ -73,10 +75,11 @@ export function generateModels(
         if (docBlock) lines.push(docBlock)
         lines.push(`export interface ${tsName} {`)
         for (const [name, fieldModel] of Object.entries(m.properties)) {
-          const doc = fieldJsdoc(fieldModel)
+          const doc = fieldJsdoc(fieldModel, "  ")
+          if (doc) lines.push(doc)
           const opt = required.includes(name as any) ? "" : "?"
           const tsType = toTs(fieldModel, schemaMap, identifier, namespace)
-          lines.push(`  ${doc}${name}${opt}: ${tsType};`)
+          lines.push(`  ${name}${opt}: ${tsType};`)
         }
         lines.push(`}`)
         lines.push("")

@@ -5,7 +5,7 @@ import { groupBy } from "@huanglangjian/specs"
 import { camelCase, pascalCase } from "text-case"
 
 import { resolveLib, type ValidationLib } from "./validation-lib"
-import { generateModels, toTs, resolveSchemaExpr, collectSchemaRefs } from "./shared"
+import { generateModels, toTs, resolveSchemaExpr, collectSchemaRefs, fieldJsdoc } from "./shared"
 
 export interface TsClientOptions {
   routers: RouterModel[]
@@ -99,32 +99,43 @@ function generateClientFn(
   lines.push(`export namespace ${OperationName}Operation {`)
   lines.push("")
 
-  const requestFields: string[] = []
-  for (const [n, v] of Object.entries(operation.pathVariables)) {
-    requestFields.push(`${n}: ${toTs(v.model, schemaMap, identifier, namespace)}`)
+  lines.push(`  export interface Request {`)
+  if (hasParams) {
+    lines.push(`    params: {`)
+    for (const [n, v] of Object.entries(operation.pathVariables)) {
+      const doc = fieldJsdoc(v.model, "      ")
+      if (doc) lines.push(doc)
+      lines.push(`      ${n}: ${toTs(v.model, schemaMap, identifier, namespace)};`)
+    }
+    lines.push(`    };`)
   }
-  for (const [n, q] of Object.entries(operation.queries)) {
-    const required = q.required ? "" : "?"
-    requestFields.push(`${n}${required}: ${toTs(q.model, schemaMap, identifier, namespace)}`)
-  }
-  if (hasBody) {
-    requestFields.push(`body: ${toTs(operation.requestModel!, schemaMap, identifier, namespace)}`)
+  if (hasQuery) {
+    lines.push(`    query: {`)
+    for (const [n, q] of Object.entries(operation.queries)) {
+      const doc = fieldJsdoc(q.model, "      ")
+      if (doc) lines.push(doc)
+      const opt = q.required ? "" : "?"
+      lines.push(`      ${n}${opt}: ${toTs(q.model, schemaMap, identifier, namespace)};`)
+    }
+    lines.push(`    };`)
   }
   if (hasHeaders) {
-    const field = Object.entries(operation.headers)
-      .map(
-        ([key, header]) =>
-          `"${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)}`,
-      )
-      .join("; ")
-    requestFields.push(`headers?: { ${field} } & Record<string, string>`)
+    lines.push(`    headers?: {`)
+    for (const [key, header] of Object.entries(operation.headers)) {
+      const doc = fieldJsdoc(header.model, "      ")
+      if (doc) lines.push(doc)
+      lines.push(`      "${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)};`)
+    }
+    lines.push(`    } & Record<string, string>;`)
   } else {
-    requestFields.push("headers?: Record<string, string>")
+    lines.push(`    headers?: Record<string, string>;`)
   }
-  requestFields.push("baseUrl?: string")
-
-  lines.push(`  export interface Request {`)
-  for (const field of requestFields) lines.push(`    ${field}`)
+  if (hasBody) {
+    const bodyDoc = fieldJsdoc(operation.requestModel!, "    ")
+    if (bodyDoc) lines.push(bodyDoc)
+    lines.push(`    body: ${toTs(operation.requestModel!, schemaMap, identifier, namespace)};`)
+  }
+  lines.push(`    baseUrl?: string;`)
   lines.push(`  }`)
   lines.push("")
 
@@ -220,6 +231,10 @@ function generateClientIndex(operations: OperationDescriptor[]): string {
 
   const groups = groupBy(operations, (operation) => operation.group)
   for (const [group, groupOps] of Object.entries(groups)) {
+    const groupDesc = groupOps[0]?.groupDescription
+    if (groupDesc) {
+      lines.push(`/** @description ${groupDesc} */`)
+    }
     lines.push(`// ── ${group} ──`)
     for (const operation of groupOps) {
       const n = camelCase(operation.id)
