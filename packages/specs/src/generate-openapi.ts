@@ -15,6 +15,7 @@ import type {
   SecurityRequirementObject,
   SecuritySchemeObject,
   ServerObject,
+  TagObject,
 } from "./schemas/openapi-schema"
 import type {
   ApikeySecurityComponent,
@@ -92,6 +93,15 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
 
   const hasSchemas = Object.keys(schemas).length > 0
 
+  const tags = routers.reduce<TagObject[]>((acc, rm) => {
+    if (!acc.some((t) => t.name === rm.name)) {
+      const tag: TagObject = { name: rm.name }
+      if (rm.description) tag.description = rm.description
+      acc.push(tag)
+    }
+    return acc
+  }, [])
+
   const paths = generatePaths(flatRoutes, registry)
 
   let components: ComponentsObject | undefined = hasSchemas ? { schemas } : undefined
@@ -111,6 +121,7 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
           servers,
           paths: securedPaths,
           components,
+          ...(tags.length > 0 ? { tags } : {}),
         },
         registry,
       }
@@ -123,6 +134,7 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
     servers,
     paths,
     components,
+    ...(tags.length > 0 ? { tags } : {}),
   }
 
   return { openapi, registry }

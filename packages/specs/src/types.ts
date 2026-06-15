@@ -4,6 +4,7 @@ import type { PartialOnUndefinedDeep } from "type-fest"
 export interface BasicModel<T> {
   title?: string
   description?: string
+  deprecated?: boolean
   examples?: T[]
   schema?: StandardTypedV1<T, T>
   default?: T

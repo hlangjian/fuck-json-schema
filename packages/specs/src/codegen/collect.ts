@@ -8,7 +8,6 @@ import type {
   FieldDescriptor,
   OperationDescriptor,
   RecordDescriptor,
-  SchemaInfo,
   SchemaMap,
   TaggedUnionDescriptor,
   UnionDescriptor,
@@ -158,6 +157,7 @@ export function collectOperations(routers: RouterModel[]): OperationDescriptor[]
         summary: route.summary,
         description: route.description,
         tags: route.tags,
+        deprecated: route.deprecated,
         requestModel: route.body ?? null,
         responses,
         responseKinds,
@@ -173,27 +173,7 @@ export function collectSchemaMap(ops: OperationDescriptor[]): SchemaMap {
   const all = collectAll(ops)
   const map: SchemaMap = new Map()
   for (const m of all) {
-    if ("id" in m && map.has(m.id)) continue
-    if (m.kind === "record") {
-      map.set(m.id, {
-        kind: "record",
-        fields: Object.entries(m.properties).map(([name, p]) => ({
-          name,
-          model: p as Models,
-          required: m.required.includes(name as any),
-        })),
-      })
-    } else if (m.kind === "enums") {
-      map.set(m.id, { kind: "enums", variants: m.variants } as SchemaInfo)
-    } else if (m.kind === "union") {
-      map.set(m.id, { kind: "union", unionVariants: m.variants as Record<string, Models> } as SchemaInfo)
-    } else if (m.kind === "taggedUnion") {
-      map.set(m.id, {
-        kind: "taggedUnion",
-        unionVariants: m.variants as Record<string, Models>,
-        discriminator: m.discriminator as string,
-      } as SchemaInfo)
-    }
+    if ("id" in m && !map.has(m.id)) map.set(m.id, m)
   }
   return map
 }
@@ -251,9 +231,9 @@ function collectDependencies(model: Models, schemaMap: SchemaMap): string[] {
     if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
       walk(m.base)
     } else if (m.kind === "record") {
-      Object.values(m.properties).forEach((v) => walk(v as Models))
+      Object.values(m.properties).forEach((v) => walk(v))
     } else if (m.kind === "union" || m.kind === "taggedUnion") {
-      Object.values(m.variants).forEach((v) => walk(v as Models))
+      Object.values(m.variants).forEach((v) => walk(v))
     }
   }
 
@@ -261,8 +241,8 @@ function collectDependencies(model: Models, schemaMap: SchemaMap): string[] {
   return deps
 }
 
-export function topologicalSortSchemaMap(schemaMap: SchemaMap): [string, SchemaInfo][] {
-  const entries: [string, SchemaInfo][] = []
+export function topologicalSortSchemaMap(schemaMap: SchemaMap): [string, Models][] {
+  const entries: [string, Models][] = []
   const graph = new Map<string, string[]>()
   const inDegree = new Map<string, number>()
 
@@ -271,14 +251,14 @@ export function topologicalSortSchemaMap(schemaMap: SchemaMap): [string, SchemaI
     inDegree.set(id, 0)
   }
 
-  for (const [id, schemaInfo] of schemaMap) {
+  for (const [id, m] of schemaMap) {
     const deps: string[] = []
-    if (schemaInfo.kind === "record" && schemaInfo.fields) {
-      for (const field of schemaInfo.fields) {
-        deps.push(...collectDependencies(field.model, schemaMap))
+    if (m.kind === "record") {
+      for (const p of Object.values(m.properties)) {
+        deps.push(...collectDependencies(p, schemaMap))
       }
-    } else if ((schemaInfo.kind === "union" || schemaInfo.kind === "taggedUnion") && schemaInfo.unionVariants) {
-      for (const variant of Object.values(schemaInfo.unionVariants)) {
+    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+      for (const variant of Object.values(m.variants)) {
         deps.push(...collectDependencies(variant, schemaMap))
       }
     }
@@ -306,9 +286,9 @@ export function topologicalSortSchemaMap(schemaMap: SchemaMap): [string, SchemaI
     }
   }
 
-  for (const [id, info] of schemaMap) {
+  for (const [id, m] of schemaMap) {
     if (!entries.some(([eId]) => eId === id)) {
-      entries.push([id, info])
+      entries.push([id, m])
     }
   }
 

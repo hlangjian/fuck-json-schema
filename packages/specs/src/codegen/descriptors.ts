@@ -11,9 +11,7 @@ export type AnyRouteModel = RouteModel<
 >
 
 export interface CollectOptions {
-  /** 将 originalId 映射为标识符，默认 pascalCase */
   identifier?: (id: string) => string
-  /** 命名空间，如 "com.example" */
   namespace?: string
 }
 
@@ -67,6 +65,7 @@ export interface OperationDescriptor {
   path: string
   summary?: string
   description?: string
+  deprecated?: boolean
   tags?: string[]
   requestModel: Models | null
   responses: Record<number, Models | null>
@@ -76,12 +75,4 @@ export interface OperationDescriptor {
   headers: Record<string, { model: Models; name: string; required: boolean }>
 }
 
-export interface SchemaInfo {
-  kind: "record" | "enums" | "union" | "taggedUnion"
-  fields?: Array<{ name: string; model: Models; required: boolean }>
-  variants?: Record<string, string>
-  unionVariants?: Record<string, Models>
-  discriminator?: string
-}
-
-export type SchemaMap = Map<string, SchemaInfo>
+export type SchemaMap = Map<string, Models>

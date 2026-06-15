@@ -38,6 +38,14 @@ export function generateTsClient(options: TsClientOptions): Record<string, strin
   return files
 }
 
+function opJsdoc(op: { summary?: string; description?: string; deprecated?: boolean }): string | null {
+  const tags: string[] = []
+  if (op.summary) tags.push(`@summary ${op.summary}`)
+  if (op.description) tags.push(`@description ${op.description}`)
+  if (op.deprecated) tags.push("@deprecated")
+  return tags.length > 0 ? `/**\n * ${tags.join("\n * ")}\n */` : null
+}
+
 function generateClientFn(
   operation: OperationDescriptor,
   schemaMap: SchemaMap,
@@ -84,8 +92,10 @@ function generateClientFn(
   if (allModelImports.length > 0) {
     lines.push(`import { ${allModelImports.join(", ")} } from "../models"`)
   }
-
   lines.push("")
+
+  const opDoc = opJsdoc(operation)
+  if (opDoc) lines.push(opDoc)
   lines.push(`export namespace ${OperationName}Operation {`)
   lines.push("")
 
@@ -160,6 +170,7 @@ function generateClientFn(
 
   const pathExpr = operation.path.replace(/\{(\w+)\}/g, (_, name) => `\${encodeURIComponent(req.${name})}`)
 
+  if (opDoc) lines.push(opDoc)
   lines.push(`export async function ${functionName}(${reqParam}): Promise<${retType}> {`)
   lines.push(`  const baseUrl = req?.baseUrl ?? ""`)
 

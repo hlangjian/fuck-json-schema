@@ -4,6 +4,43 @@ import type { SchemaMap } from "@huanglangjian/specs"
 import { camelCase } from "text-case"
 import type { ValidationLib } from "./validation-lib"
 
+function jsdocTags(model: {
+  description?: string
+  deprecated?: boolean
+  examples?: unknown[]
+  default?: unknown
+}): string[] {
+  const tags: string[] = []
+  if (model.description) tags.push(`@description ${model.description}`)
+  if (model.deprecated) tags.push("@deprecated")
+  if (model.examples && model.examples.length > 0) {
+    tags.push(`@example ${JSON.stringify(model.examples[0])}`)
+  }
+  if (model.default !== undefined) {
+    tags.push(`@default ${JSON.stringify(model.default)}`)
+  }
+  return tags
+}
+
+function jsdocBlock(model: {
+  description?: string
+  deprecated?: boolean
+  examples?: unknown[]
+  default?: unknown
+}): string | null {
+  const tags = jsdocTags(model)
+  if (tags.length === 0) return null
+  return `/**\n * ${tags.join("\n * ")}\n */`
+}
+
+function fieldJsdoc(field: { title?: string; description?: string; deprecated?: boolean }): string {
+  const parts: string[] = []
+  if (field.title) parts.push(field.title)
+  if (field.description) parts.push(field.description)
+  if (field.deprecated) parts.push("@deprecated")
+  return parts.length > 0 ? `/** ${parts.join(" — ")} */ ` : ""
+}
+
 export function generateModels(
   schemaMap: SchemaMap,
   identifier: (s: string) => string,
@@ -14,55 +51,62 @@ export function generateModels(
   lines.push(lib.importStmt)
   lines.push("")
 
-  for (const [id, schemaInfo] of topologicalSortSchemaMap(schemaMap)) {
+  for (const [id, m] of topologicalSortSchemaMap(schemaMap)) {
     const schemaName = camelCase(id) + "Schema"
     const tsName = identifier(id)
+    const docBlock = jsdocBlock(m)
 
-    switch (schemaInfo.kind) {
+    switch (m.kind) {
       case "record": {
+        const required = m.required as string[]
         lines.push(`export const ${schemaName} = ${lib.ns}.object({`)
-        for (const field of schemaInfo.fields!) {
-          const expr = toSchema(field.model, schemaMap, lib)
-          const finalExpr = field.required ? expr : lib.optional(expr, modelDefault(field.model))
-          lines.push(`  ${field.name}: ${finalExpr},`)
+        for (const [name, fieldModel] of Object.entries(m.properties)) {
+          const expr = toSchema(fieldModel, schemaMap, lib)
+          const finalExpr = required.includes(name as any)
+            ? expr
+            : lib.optional(expr, modelDefault(fieldModel))
+          lines.push(`  ${name}: ${finalExpr},`)
         }
         lines.push(`})`)
         lines.push("")
 
+        if (docBlock) lines.push(docBlock)
         lines.push(`export interface ${tsName} {`)
-        for (const field of schemaInfo.fields!) {
-          lines.push(
-            `  ${field.name}${field.required ? "" : "?"}: ${toTs(field.model, schemaMap, identifier, namespace)};`,
-          )
+        for (const [name, fieldModel] of Object.entries(m.properties)) {
+          const doc = fieldJsdoc(fieldModel)
+          const opt = required.includes(name as any) ? "" : "?"
+          const tsType = toTs(fieldModel, schemaMap, identifier, namespace)
+          lines.push(`  ${doc}${name}${opt}: ${tsType};`)
         }
         lines.push(`}`)
         lines.push("")
         break
       }
       case "enums": {
-        lines.push(`export const ${schemaName} = ${lib.enums(Object.values(schemaInfo.variants!))}`)
+        lines.push(`export const ${schemaName} = ${lib.enums(Object.values(m.variants))}`)
+        if (docBlock) lines.push(docBlock)
         lines.push(`export type ${tsName} = ${lib.infer(schemaName)}`)
         lines.push("")
         break
       }
       case "union": {
-        const variants = Object.entries(schemaInfo.unionVariants!)
-        const unionItems = variants.map(([, v]) => toSchema(v as Models, schemaMap, lib))
+        const unionItems = Object.values(m.variants).map((v) => toSchema(v, schemaMap, lib))
         lines.push(`export const ${schemaName} = ${lib.union(unionItems)}`)
+        if (docBlock) lines.push(docBlock)
         lines.push(`export type ${tsName} = ${lib.infer(schemaName)}`)
         lines.push("")
         break
       }
       case "taggedUnion": {
-        const discriminator = schemaInfo.discriminator!
-        const unionItems = Object.entries(schemaInfo.unionVariants!).map(([, v]) =>
-          toSchema(v as Models, schemaMap, lib),
-        )
-        lines.push(`export const ${schemaName} = ${lib.discriminatedUnion(discriminator, unionItems)}`)
+        const unionItems = Object.values(m.variants).map((v) => toSchema(v, schemaMap, lib))
+        lines.push(`export const ${schemaName} = ${lib.discriminatedUnion(m.discriminator, unionItems)}`)
+        if (docBlock) lines.push(docBlock)
         lines.push(`export type ${tsName} = ${lib.infer(schemaName)}`)
         lines.push("")
         break
       }
+      default:
+        break
     }
   }
 
@@ -99,21 +143,17 @@ export function toSchema(model: Models, schemaMap: SchemaMap, lib: ValidationLib
     case "enums":
       return lib.enums(Object.values(model.variants))
     case "record": {
-      const schemaInfo = schemaMap.get(model.id)
-      return schemaInfo?.fields ? camelCase(model.id) + "Schema" : lib.unknown()
+      return schemaMap.has(model.id) ? camelCase(model.id) + "Schema" : lib.unknown()
     }
     case "union": {
-      const schemaInfo = schemaMap.get(model.id)
-      if (schemaInfo?.unionVariants) return camelCase(model.id) + "Schema"
-      const unionItems = Object.values(model.variants).map((v) => toSchema(v as Models, schemaMap, lib))
+      if (schemaMap.has(model.id)) return camelCase(model.id) + "Schema"
+      const unionItems = Object.values(model.variants).map((v) => toSchema(v, schemaMap, lib))
       return lib.union(unionItems)
     }
     case "taggedUnion": {
-      const schemaInfo = schemaMap.get(model.id)
-      if (schemaInfo?.unionVariants) return camelCase(model.id) + "Schema"
-      const discriminator = model.discriminator as string
-      const unionItems = Object.values(model.variants).map((v) => toSchema(v as Models, schemaMap, lib))
-      return lib.discriminatedUnion(discriminator, unionItems)
+      if (schemaMap.has(model.id)) return camelCase(model.id) + "Schema"
+      const unionItems = Object.values(model.variants).map((v) => toSchema(v, schemaMap, lib))
+      return lib.discriminatedUnion(model.discriminator, unionItems)
     }
     default:
       return lib.unknown()
@@ -162,20 +202,17 @@ export function toTs(
     case "map":
       return `Record<string, ${toTs(model.base, schemaMap, identifier, namespace)}>`
     case "enums": {
-      const schemaInfo = schemaMap.get(model.id)
-      if (schemaInfo?.variants) return identifier(model.id)
+      if (schemaMap.has(model.id)) return identifier(model.id)
       return Object.values(model.variants)
         .map((v) => JSON.stringify(v))
         .join(" | ")
     }
     case "record": {
-      const schemaInfo = schemaMap.get(model.id)
-      return schemaInfo?.fields ? identifier(model.id) : "unknown"
+      return schemaMap.has(model.id) ? identifier(model.id) : "unknown"
     }
     case "union":
     case "taggedUnion": {
-      const schemaInfo = schemaMap.get(model.id)
-      if (schemaInfo?.unionVariants) return identifier(model.id)
+      if (schemaMap.has(model.id)) return identifier(model.id)
       return Object.values(model.variants)
         .map((v) => toTs(v as Models, schemaMap, identifier, namespace))
         .join(" | ")
@@ -191,8 +228,7 @@ export function resolveSchemaExpr(model: Models, schemaMap: SchemaMap, lib: Vali
     case "union":
     case "taggedUnion":
     case "enums": {
-      const schemaInfo = schemaMap.get(model.id)
-      return schemaInfo ? camelCase(model.id) + "Schema" : null
+      return schemaMap.has(model.id) ? camelCase(model.id) + "Schema" : null
     }
     case "array":
     case "set": {
@@ -214,8 +250,7 @@ export function collectSchemaRefs(model: Models, schemaMap: SchemaMap): string[]
     case "union":
     case "taggedUnion":
     case "enums": {
-      const schemaInfo = schemaMap.get(model.id)
-      return schemaInfo ? [camelCase(model.id) + "Schema"] : []
+      return schemaMap.has(model.id) ? [camelCase(model.id) + "Schema"] : []
     }
     case "array":
     case "set":

@@ -48,6 +48,14 @@ export function generateTsServer(options: TsServerOptions): Record<string, strin
   return files
 }
 
+function opJsdoc(op: { summary?: string; description?: string; deprecated?: boolean }): string | null {
+  const tags: string[] = []
+  if (op.summary) tags.push(`@summary ${op.summary}`)
+  if (op.description) tags.push(`@description ${op.description}`)
+  if (op.deprecated) tags.push("@deprecated")
+  return tags.length > 0 ? `/**\n * ${tags.join("\n * ")}\n */` : null
+}
+
 function generateOpFile(
   operation: OperationDescriptor,
   schemaMap: SchemaMap,
@@ -139,6 +147,8 @@ function generateOpFile(
     lines.push("")
   }
 
+  const opDoc = opJsdoc(operation)
+  if (opDoc) lines.push(opDoc)
   lines.push(`export namespace ${OperationName}Operation {`)
   lines.push("")
 
@@ -395,35 +405,15 @@ function addConfigToSchemaMap(config: Models, schemaMap: SchemaMap): void {
     seen.add(m)
 
     if ("id" in m && !schemaMap.has(m.id)) {
-      if (m.kind === "record") {
-        const rec = m as RecordModel<Record<string, Models>, string>
-        schemaMap.set(rec.id, {
-          kind: "record",
-          fields: Object.entries(rec.properties).map(([name, p]) => ({
-            name,
-            model: p as Models,
-            required: (rec.required as string[]).includes(name),
-          })),
-        })
-      } else if (m.kind === "enums") {
-        schemaMap.set(m.id, { kind: "enums", variants: m.variants as Record<string, string> })
-      } else if (m.kind === "union") {
-        schemaMap.set(m.id, { kind: "union", unionVariants: m.variants as Record<string, Models> })
-      } else if (m.kind === "taggedUnion") {
-        schemaMap.set(m.id, {
-          kind: "taggedUnion",
-          unionVariants: m.variants as Record<string, Models>,
-          discriminator: m.discriminator as string,
-        })
-      }
+      schemaMap.set(m.id, m)
     }
 
     if (m.kind === "record") {
-      Object.values((m as RecordModel<Record<string, Models>, string>).properties).forEach((v) => walk(v as Models))
+      Object.values(m.properties).forEach((v) => walk(v))
     } else if (m.kind === "union" || m.kind === "taggedUnion") {
-      Object.values((m as { variants: Record<string, Models> }).variants).forEach((v) => walk(v as Models))
+      Object.values(m.variants).forEach((v) => walk(v))
     } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
-      walk((m as { base: Models }).base)
+      walk(m.base)
     }
   }
   walk(config)

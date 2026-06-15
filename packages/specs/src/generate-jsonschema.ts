@@ -354,11 +354,11 @@ function collectNamedModels(model: Models): Models[] {
     seen.add(m)
     if ("id" in m) out.push(m)
     if (m.kind === "record") {
-      Object.values((m as Record<string, Models>).properties).forEach((v) => walk(v as Models))
+      Object.values(m.properties).forEach((v) => walk(v))
     } else if (m.kind === "union" || m.kind === "taggedUnion") {
-      Object.values((m as { variants: Record<string, Models> }).variants).forEach((v) => walk(v as Models))
+      Object.values(m.variants).forEach((v) => walk(v))
     } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
-      walk((m as { base: Models }).base)
+      walk(m.base)
     }
   }
   walk(model)

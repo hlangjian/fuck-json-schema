@@ -27,6 +27,7 @@ export type SimpleType =
 export interface RouterModel {
   basePath?: string
   name: string
+  description?: string
   routes: Record<
     string,
     RouteModel<
@@ -60,6 +61,7 @@ export interface RouteModel<
   queries?: Queries
   responses: Responses
   tags?: string[]
+  deprecated?: boolean
 }
 
 export type ResponseModel<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>> =
@@ -205,6 +207,6 @@ export type BinaryLikeContentType =
 
 export type FormLikeContentType = (string & {}) | "application/x-www-form-urlencoded" | "multipart/form-data"
 
-export function routerModel(options: { name: string; basePath?: string; routes: RouterModel["routes"] }): RouterModel {
+export function routerModel(options: { name: string; basePath?: string; description?: string; routes: RouterModel["routes"] }): RouterModel {
   return options
 }
