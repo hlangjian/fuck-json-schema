@@ -7,9 +7,10 @@ Generates framework-agnostic server handler source files. Handlers use standard 
 ```ts
 interface TsServerOptions {
   routers: RouterModel[]
-  identifier?: (id: string) => string    // default: pascalCase
+  identifier?: (id: string) => string       // default: pascalCase
   namespace?: string
-  configuration?: RecordModel            // server config for env-var generation
+  configuration?: RecordModel               // server config for env-var generation
+  validationLib?: "zod" | "valibot"         // default: "zod"
 }
 ```
 
@@ -17,10 +18,10 @@ interface TsServerOptions {
 
 | File | Content |
 |---|---|
-| `models.ts` | Zod schemas + TypeScript interfaces for all named models (including config) |
-| `{group}/{id}.ts` | Per-operation: `XxxOperation` namespace (Request/Response/Handler types), Zod validation, URLPattern |
+| `models.ts` | Validation schemas (Zod or Valibot) + TypeScript interfaces for all named models (including config) |
+| `{group}/{id}.ts` | Per-operation: `XxxOperation` namespace (Request/Response/Handler types), schema validation, URLPattern |
 | `index.ts` | `XxxHandlers` interfaces + `createXxxRouter()` factory functions per router group |
-| `config.ts` | (if `configuration` provided) Pure Zod runtime config with env parameterization, taggedUnion/union resolution |
+| `config.ts` | (if `configuration` provided) Schema-validated runtime config with env parameterization, taggedUnion/union resolution |
 
 ### Handler signature
 
@@ -40,8 +41,9 @@ Generates TypeScript fetch-based client SDK.
 ```ts
 interface TsClientOptions {
   routers: RouterModel[]
-  identifier?: (id: string) => string    // default: pascalCase
+  identifier?: (id: string) => string       // default: pascalCase
   namespace?: string
+  validationLib?: "zod" | "valibot"         // default: "zod"
 }
 ```
 
@@ -49,6 +51,6 @@ interface TsClientOptions {
 
 | File | Content |
 |---|---|
-| `models.ts` | Zod schemas + TypeScript interfaces |
-| `{group}/{id}.ts` | Per-operation: `XxxOperation` namespace (Request/Response types), async function with fetch + Zod response validation |
+| `models.ts` | Validation schemas (Zod or Valibot) + TypeScript interfaces |
+| `{group}/{id}.ts` | Per-operation: `XxxOperation` namespace (Request/Response types), async function with fetch + schema response validation |
 | `index.ts` | Barrel re-exports grouped by router name |

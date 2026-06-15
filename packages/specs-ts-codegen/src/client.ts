@@ -4,42 +4,45 @@ import type { OperationDescriptor, SchemaMap } from "@huanglangjian/specs"
 import { groupBy } from "@huanglangjian/specs"
 import { camelCase, pascalCase } from "text-case"
 
-import { generateModels, toTs, resolveZodSchema, collectSchemaRefs } from "./shared"
+import { resolveLib, type ValidationLib } from "./validation-lib"
+import { generateModels, toTs, resolveSchemaExpr, collectSchemaRefs } from "./shared"
 
 export interface TsClientOptions {
   routers: RouterModel[]
   identifier?: (id: string) => string
   namespace?: string
+  validationLib?: "zod" | "valibot"
 }
 
 export function generateTsClient(options: TsClientOptions): Record<string, string> {
-  const { routers, identifier = pascalCase, namespace } = options
+  const { routers, identifier = pascalCase, namespace, validationLib } = options
+  const lib = resolveLib(validationLib ?? "zod")
   const operations = collectOperations(routers)
   const schemaMap = collectSchemaMap(operations)
   const files: Record<string, string> = {}
 
-  files["models.ts"] = generateModels(schemaMap, identifier, namespace)
+  files["models.ts"] = generateModels(schemaMap, identifier, lib, namespace)
 
   for (const operation of operations) {
     files[`${camelCase(operation.group)}/${camelCase(operation.id)}.ts`] = generateClientFn(
       operation,
       schemaMap,
       identifier,
+      lib,
       namespace,
     )
   }
 
-  files["index.ts"] = generateClientIndex(operations, identifier)
+  files["index.ts"] = generateClientIndex(operations)
 
   return files
 }
-
-// ---- per-operation file ----
 
 function generateClientFn(
   operation: OperationDescriptor,
   schemaMap: SchemaMap,
   identifier: (s: string) => string,
+  lib: ValidationLib,
   namespace: string | undefined,
 ): string {
   const lines: string[] = []
@@ -69,7 +72,7 @@ function generateClientFn(
   const okModel: Models | null = okStatus ? operation.responses[Number(okStatus)] : null
   const okKind = okStatus ? (operation.responseKinds[Number(okStatus)] ?? "json-response") : "json-response"
   const isStreamLike = okKind === "stream-response" || okKind === "sse-response" || okKind === "binary"
-  const okSchema = okModel ? resolveZodSchema(okModel, schemaMap) : null
+  const okSchema = okModel ? resolveSchemaExpr(okModel, schemaMap, lib) : null
 
   const allModelImports = [...typeImports]
   if (okSchema && !isStreamLike) {
@@ -189,7 +192,7 @@ function generateClientFn(
 
   if (okModel && !isStreamLike) {
     if (okSchema) {
-      lines.push(`  return ${okSchema}.parse(await res.json())`)
+      lines.push(`  return ${lib.parse(okSchema, "await res.json()")}`)
     } else {
       lines.push(`  return res.json()`)
     }
@@ -201,9 +204,7 @@ function generateClientFn(
   return lines.join("\n")
 }
 
-// ---- index.ts ----
-
-function generateClientIndex(operations: OperationDescriptor[], _identifier: (s: string) => string): string {
+function generateClientIndex(operations: OperationDescriptor[]): string {
   const lines: string[] = []
 
   const groups = groupBy(operations, (operation) => operation.group)

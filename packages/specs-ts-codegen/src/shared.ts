@@ -2,10 +2,16 @@ import type { Models } from "@huanglangjian/specs"
 import { topologicalSortSchemaMap } from "@huanglangjian/specs"
 import type { SchemaMap } from "@huanglangjian/specs"
 import { camelCase } from "text-case"
+import type { ValidationLib } from "./validation-lib"
 
-export function generateModels(schemaMap: SchemaMap, identifier: (s: string) => string, namespace?: string): string {
+export function generateModels(
+  schemaMap: SchemaMap,
+  identifier: (s: string) => string,
+  lib: ValidationLib,
+  namespace?: string,
+): string {
   const lines: string[] = []
-  lines.push(`import { z } from "zod"`)
+  lines.push(lib.importStmt)
   lines.push("")
 
   for (const [id, schemaInfo] of topologicalSortSchemaMap(schemaMap)) {
@@ -14,11 +20,11 @@ export function generateModels(schemaMap: SchemaMap, identifier: (s: string) => 
 
     switch (schemaInfo.kind) {
       case "record": {
-        lines.push(`export const ${schemaName} = z.object({`)
+        lines.push(`export const ${schemaName} = ${lib.ns}.object({`)
         for (const field of schemaInfo.fields!) {
-          lines.push(
-            `  ${field.name}: ${toZod(field.model, schemaMap)}${field.required ? "" : optionalDefault(field.model)},`,
-          )
+          const expr = toSchema(field.model, schemaMap, lib)
+          const finalExpr = field.required ? expr : lib.optional(expr, modelDefault(field.model))
+          lines.push(`  ${field.name}: ${finalExpr},`)
         }
         lines.push(`})`)
         lines.push("")
@@ -34,26 +40,26 @@ export function generateModels(schemaMap: SchemaMap, identifier: (s: string) => 
         break
       }
       case "enums": {
-        lines.push(`export const ${schemaName} = z.enum(${JSON.stringify(Object.values(schemaInfo.variants!))})`)
-        lines.push(`export type ${tsName} = z.infer<typeof ${schemaName}>`)
+        lines.push(`export const ${schemaName} = ${lib.enums(Object.values(schemaInfo.variants!))}`)
+        lines.push(`export type ${tsName} = ${lib.infer(schemaName)}`)
         lines.push("")
         break
       }
       case "union": {
         const variants = Object.entries(schemaInfo.unionVariants!)
-        const unionItems = variants.map(([, v]) => toZod(v as Models, schemaMap)).join(", ")
-        lines.push(`export const ${schemaName} = z.union([${unionItems}])`)
-        lines.push(`export type ${tsName} = z.infer<typeof ${schemaName}>`)
+        const unionItems = variants.map(([, v]) => toSchema(v as Models, schemaMap, lib))
+        lines.push(`export const ${schemaName} = ${lib.union(unionItems)}`)
+        lines.push(`export type ${tsName} = ${lib.infer(schemaName)}`)
         lines.push("")
         break
       }
       case "taggedUnion": {
         const discriminator = schemaInfo.discriminator!
-        const unionItems = Object.entries(schemaInfo.unionVariants!).map(([, v]) => `${toZod(v as Models, schemaMap)}`)
-        lines.push(
-          `export const ${schemaName} = z.discriminatedUnion(${JSON.stringify(discriminator)}, [${unionItems.join(", ")}])`,
+        const unionItems = Object.entries(schemaInfo.unionVariants!).map(([, v]) =>
+          toSchema(v as Models, schemaMap, lib),
         )
-        lines.push(`export type ${tsName} = z.infer<typeof ${schemaName}>`)
+        lines.push(`export const ${schemaName} = ${lib.discriminatedUnion(discriminator, unionItems)}`)
+        lines.push(`export type ${tsName} = ${lib.infer(schemaName)}`)
         lines.push("")
         break
       }
@@ -63,54 +69,67 @@ export function generateModels(schemaMap: SchemaMap, identifier: (s: string) => 
   return lines.join("\n")
 }
 
-export function toZod(model: Models, schemaMap: SchemaMap): string {
+export function toSchema(model: Models, schemaMap: SchemaMap, lib: ValidationLib): string {
   switch (model.kind) {
     case "int32":
-      return "z.coerce.number().int()"
+      return lib.int32()
     case "float32":
     case "float64":
-      return "z.coerce.number()"
+      return lib.float32()
     case "boolean":
-      return "z.coerce.boolean()"
+      return lib.boolean()
     case "string":
-      return "z.string()"
+      return lib.string()
     case "datetime":
-      return "z.string().datetime()"
+      return lib.datetime()
     case "date":
-      return "z.string().date()"
+      return lib.date()
     case "duration":
-      return "z.string()"
+      return lib.duration()
     case "literal":
-      return `z.literal(${JSON.stringify(model.value)})`
+      return lib.literal(model.value)
     case "null":
-      return "z.null()"
+      return lib.null()
     case "array":
-      return `${toZod(model.base, schemaMap)}.array()`
+      return lib.array(toSchema(model.base, schemaMap, lib))
     case "set":
-      return `${toZod(model.base, schemaMap)}.array()`
+      return lib.set(toSchema(model.base, schemaMap, lib))
     case "map":
-      return `z.record(z.string(), ${toZod(model.base, schemaMap)})`
+      return lib.map(lib.string(), toSchema(model.base, schemaMap, lib))
     case "enums":
-      return `z.enum(${JSON.stringify(Object.values(model.variants))})`
+      return lib.enums(Object.values(model.variants))
     case "record": {
       const schemaInfo = schemaMap.get(model.id)
-      return schemaInfo?.fields ? camelCase(model.id) + "Schema" : "z.unknown()"
+      return schemaInfo?.fields ? camelCase(model.id) + "Schema" : lib.unknown()
     }
     case "union": {
       const schemaInfo = schemaMap.get(model.id)
       if (schemaInfo?.unionVariants) return camelCase(model.id) + "Schema"
-      const unionItems = Object.values(model.variants).map((v) => toZod(v as Models, schemaMap))
-      return `z.union([${unionItems.join(", ")}])`
+      const unionItems = Object.values(model.variants).map((v) => toSchema(v as Models, schemaMap, lib))
+      return lib.union(unionItems)
     }
     case "taggedUnion": {
       const schemaInfo = schemaMap.get(model.id)
       if (schemaInfo?.unionVariants) return camelCase(model.id) + "Schema"
       const discriminator = model.discriminator as string
-      const unionItems = Object.values(model.variants).map((v) => `${toZod(v as Models, schemaMap)}`)
-      return `z.discriminatedUnion(${JSON.stringify(discriminator)}, [${unionItems.join(", ")}])`
+      const unionItems = Object.values(model.variants).map((v) => toSchema(v as Models, schemaMap, lib))
+      return lib.discriminatedUnion(discriminator, unionItems)
     }
     default:
-      return "z.unknown()"
+      return lib.unknown()
+  }
+}
+
+export function toSchemaEnv(model: Models, schemaMap: SchemaMap, lib: ValidationLib): string {
+  switch (model.kind) {
+    case "array":
+      return lib.envArray(toSchema(model.base, schemaMap, lib))
+    case "set":
+      return lib.envSet(toSchema(model.base, schemaMap, lib))
+    case "map":
+      throw new Error("unsupported configuration value of kind map")
+    default:
+      return toSchema(model, schemaMap, lib)
   }
 }
 
@@ -166,14 +185,7 @@ export function toTs(
   }
 }
 
-export function optionalDefault(model: Models): string {
-  if ("default" in model && model.default != null) {
-    return `.optional().default(${JSON.stringify(model.default)})`
-  }
-  return ".optional()"
-}
-
-export function resolveZodSchema(model: Models, schemaMap: SchemaMap): string | null {
+export function resolveSchemaExpr(model: Models, schemaMap: SchemaMap, lib: ValidationLib): string | null {
   switch (model.kind) {
     case "record":
     case "union":
@@ -184,12 +196,12 @@ export function resolveZodSchema(model: Models, schemaMap: SchemaMap): string | 
     }
     case "array":
     case "set": {
-      const inner = resolveZodSchema(model.base, schemaMap)
-      return inner ? `${inner}.array()` : null
+      const inner = resolveSchemaExpr(model.base, schemaMap, lib)
+      return inner ? lib.array(inner) : null
     }
     case "map": {
-      const inner = resolveZodSchema(model.base, schemaMap)
-      return inner ? `z.record(z.string(), ${inner})` : null
+      const inner = resolveSchemaExpr(model.base, schemaMap, lib)
+      return inner ? lib.map(lib.string(), inner) : null
     }
     default:
       return null
@@ -215,7 +227,12 @@ export function collectSchemaRefs(model: Models, schemaMap: SchemaMap): string[]
   }
 }
 
-export function toHonoPath(path: string): string {
+export function modelDefault(model: Models): unknown {
+  if ("default" in model && model.default != null) return model.default
+  return undefined
+}
+
+export function toColonPath(path: string): string {
   return path.replace(/\{(\w+)\}/g, ":$1")
 }
 

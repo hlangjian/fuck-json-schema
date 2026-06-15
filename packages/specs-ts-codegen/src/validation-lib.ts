@@ -1,0 +1,115 @@
+export interface ValidationLib {
+  name: string
+  ns: string
+  importStmt: string
+
+  int32(): string
+  float32(): string
+  float64(): string
+  boolean(): string
+  string(): string
+  datetime(): string
+  date(): string
+  duration(): string
+  literal(value: unknown): string
+  null(): string
+  unknown(): string
+
+  array(inner: string): string
+  set(inner: string): string
+  map(keyType: string, valueType: string): string
+  enums(values: string[]): string
+  union(members: string[]): string
+  discriminatedUnion(key: string, members: string[]): string
+
+  optional(inner: string, defaultValue?: unknown): string
+
+  parse(schemaExpr: string, dataExpr: string): string
+  infer(schemaRefName: string): string
+
+  envArray(inner: string): string
+  envSet(inner: string): string
+}
+
+const escape = JSON.stringify
+
+export const zodLib: ValidationLib = {
+  name: "zod",
+  ns: "z",
+  importStmt: 'import { z } from "zod"',
+
+  int32: () => "z.coerce.number().int()",
+  float32: () => "z.coerce.number()",
+  float64: () => "z.coerce.number()",
+  boolean: () => "z.coerce.boolean()",
+  string: () => "z.string()",
+  datetime: () => "z.string().datetime()",
+  date: () => "z.string().date()",
+  duration: () => "z.string()",
+  literal: (v) => `z.literal(${escape(v)})`,
+  null: () => "z.null()",
+  unknown: () => "z.unknown()",
+
+  array: (inner) => `${inner}.array()`,
+  set: (inner) => `${inner}.array()`,
+  map: (key, value) => `z.record(${key}, ${value})`,
+  enums: (values) => `z.enum(${escape(values)})`,
+  union: (members) => `z.union([${members.join(", ")}])`,
+  discriminatedUnion: (key, members) => `z.discriminatedUnion(${escape(key)}, [${members.join(", ")}])`,
+
+  optional: (inner, defaultValue) =>
+    defaultValue !== undefined
+      ? `${inner}.optional().default(${escape(defaultValue)})`
+      : `${inner}.optional()`,
+
+  parse: (schema, data) => `${schema}.parse(${data})`,
+  infer: (ref) => `z.infer<typeof ${ref}>`,
+
+  envArray: (inner) =>
+    `z.coerce.string().transform(s => s.split(',').filter(Boolean)).pipe(z.array(${inner}))`,
+  envSet: (inner) =>
+    `z.coerce.string().transform(s => new Set(s.split(',').filter(Boolean))).pipe(z.set(${inner}))`,
+}
+
+export const valibotLib: ValidationLib = {
+  name: "valibot",
+  ns: "v",
+  importStmt: 'import * as v from "valibot"',
+
+  int32: () => "v.pipe(v.string(), v.toNumber(), v.integer())",
+  float32: () => "v.pipe(v.string(), v.toNumber())",
+  float64: () => "v.pipe(v.string(), v.toNumber())",
+  boolean: () => "v.pipe(v.string(), v.parseBoolean())",
+  string: () => "v.string()",
+  datetime: () => "v.pipe(v.string(), v.isoDateTime())",
+  date: () => "v.pipe(v.string(), v.isoDate())",
+  duration: () => "v.string()",
+  literal: (v) => `v.literal(${escape(v)})`,
+  null: () => "v.null()",
+  unknown: () => "v.unknown()",
+
+  array: (inner) => `v.array(${inner})`,
+  set: (inner) => `v.set(${inner})`,
+  map: (key, value) => `v.record(${key}, ${value})`,
+  enums: (values) => `v.picklist(${escape(values)})`,
+  union: (members) => `v.union([${members.join(", ")}])`,
+  discriminatedUnion: (key, members) => `v.variant(${escape(key)}, [${members.join(", ")}])`,
+
+  optional: (inner, defaultValue) =>
+    defaultValue !== undefined
+      ? `v.optional(${inner}, ${escape(defaultValue)})`
+      : `v.optional(${inner})`,
+
+  parse: (schema, data) => `v.parse(${schema}, ${data})`,
+  infer: (ref) => `v.InferOutput<typeof ${ref}>`,
+
+  envArray: (inner) =>
+    `v.pipe(v.string(), v.transform(s => s.split(',').filter(Boolean)), v.array(${inner}))`,
+  envSet: (inner) =>
+    `v.pipe(v.string(), v.transform(s => new Set(s.split(',').filter(Boolean))), v.set(${inner}))`,
+}
+
+export function resolveLib(name: string): ValidationLib {
+  if (name === "valibot") return valibotLib
+  return zodLib
+}
