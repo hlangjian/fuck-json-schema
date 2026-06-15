@@ -54,22 +54,13 @@ interface GenerateOpenapiOptions {
 
 Automatically collects all named models from route bodies/responses, generates `components/schemas`, path items, operations, parameters (path/query/header), request bodies, and responses. If `security.policy` is provided, generates `components/securitySchemes` and injects per-operation `security` requirements based on path pattern matching.
 
-## `generateJsonSchema({ model, schemas })` → `JsonSchemaObject`
+## `generateJsonSchema(model)` → `JsonSchemaObject`
 
-Generate a complete JSON Schema (Draft 2020-12) for the given root model and its named dependencies.
-
-```ts
-generateJsonSchema({ model: Models, schemas: Record<string, Models> })
-```
-
-The `model` is expanded as the top-level schema body. Dependencies in `schemas` produce `$ref` pointers and are collected into `$defs`.
+Generate a complete JSON Schema (Draft 2020-12) for the given model. Named sub-models (record, enums, union, taggedUnion with `id`) are automatically discovered and placed in `$defs`.
 
 ```ts
-const schema = generateJsonSchema({
-  model: ServerConfig,
-  schemas: { PostgresConfig, SqliteConfig },
-})
-// → { $schema: "...draft-2020-12", type: "object", properties: {...}, $defs: { PostgresConfig: {...}, SqliteConfig: {...} } }
+const schema = generateJsonSchema(ServerConfig)
+// → { $schema: "...", type: "object", properties: { database: { $ref: "#/$defs/DatabaseConfig" } }, $defs: { PostgresConfig: {...}, ... } }
 ```
 
 ## Registry factories

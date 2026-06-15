@@ -344,26 +344,48 @@ export function createOpenapiSchemaRegistry(models?: Map<Models, { id: string; s
 }
 
 /**
- * Generate a complete JSON Schema (Draft 2020-12) for the given model and its
- * named dependencies. Dependencies registered via `schemas` produce $ref
- * pointers and are collected into $defs.
+ * 自动遍历模型树，收集所有带 `id` 的命名子模型，注册到 registry 中。
+ */
+function collectNamedModels(model: Models): Models[] {
+  const seen = new Set<Models>()
+  const out: Models[] = []
+  const walk = (m: Models) => {
+    if (seen.has(m)) return
+    seen.add(m)
+    if ("id" in m) out.push(m)
+    if (m.kind === "record") {
+      Object.values((m as Record<string, Models>).properties).forEach((v) => walk(v as Models))
+    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+      Object.values((m as { variants: Record<string, Models> }).variants).forEach((v) => walk(v as Models))
+    } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
+      walk((m as { base: Models }).base)
+    }
+  }
+  walk(model)
+  // 排除根模型自身，只返回子依赖
+  return out.filter((m) => m !== model)
+}
+
+/**
+ * 为一个模型生成完整的 JSON Schema（Draft 2020-12）。
+ *
+ * 自动遍历模型树发现所有命名子模型（带 `id` 的 record / enum / union / taggedUnion），
+ * 注册到 registry 后，根模型的属性通过 $ref 指向子模型，子模型的 schema 放入 $defs。
+ *
+ * 如需额外注入库特有的 JSON Schema 字段（如 zod 的 format），
+ * 请使用底层的 {@link buildJsonSchema} 并传入 `toJsonSchema` 回调。
  *
  * @example
- * generateJsonSchema({
- *   model: ServerConfig,
- *   schemas: { PostgresConfig, SqliteConfig },
- * })
- * // → { $schema: "...", type: "object", properties: {...}, $defs: {...} }
+ * generateJsonSchema(ServerConfig)
+ * // → { $schema: "...", type: "object", properties: { database: { $ref: "#/$defs/DatabaseConfig" } }, $defs: {...} }
  */
-export function generateJsonSchema(options: {
-  model: Models
-  schemas: Record<string, Models>
-}): JsonSchemaObject {
-  const registry = Object.entries(options.schemas).reduce(
-    (reg, [id, m]) => reg.add(id, m),
+export function generateJsonSchema(model: Models): JsonSchemaObject {
+  const deps = collectNamedModels(model)
+  const registry = deps.reduce(
+    (reg, m) => reg.add((m as { id: string }).id, m),
     createJsonSchemaRegistry(),
   )
-  const { jsonSchema } = buildJsonSchema({ model: options.model, registry })
+  const { jsonSchema } = buildJsonSchema({ model, registry })
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     ...(jsonSchema as Record<string, unknown>),

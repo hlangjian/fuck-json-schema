@@ -169,10 +169,6 @@ const { openapi } = generateOpenapi({
 // → write: JSON.stringify(openapi, null, 2)
 
 // 6. Generate server config JSON Schema
-const configSchema = generateJsonSchema({
-  model: ServerConfig,
-  schemas: { PostgresConfig, SqliteConfig },
-  // ... all nested named records
-})
+const configSchema = generateJsonSchema(ServerConfig)
 // → JSON Schema with $schema + properties + $defs
 ```

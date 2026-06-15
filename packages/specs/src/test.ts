@@ -258,17 +258,7 @@ writeFileSync(resolve(outDir, "openapi.json"), JSON.stringify(openapi, null, 2),
 console.log("✅ openapi.json")
 
 // 2. Server config JSON Schema
-const configSchema = generateJsonSchema({
-  model: ServerConfig,
-  schemas: {
-    PostgresConfig,
-    SqliteConfig,
-    AuthPassword: record({ id: "AuthPassword", properties: { method: literal("password"), username: string(), password: string() } }),
-    AuthCert: record({ id: "AuthCert", properties: { method: literal("cert"), certFile: string(), keyFile: string() } }),
-    RedisCache: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, optional: ["prefix"] }),
-    MemoryCache: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, optional: ["ttl"] }),
-  },
-})
+const configSchema = generateJsonSchema(ServerConfig)
 
 writeFileSync(resolve(outDir, "server-config.schema.json"), JSON.stringify(configSchema, null, 2), "utf-8")
 console.log("✅ server-config.schema.json")
