@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.10.0
+
+### Minor Changes
+
+- c54ac88: Remove deprecated `json-schema.ts` codegen module. Refactor JSON Schema generation internals. Update test and skill documentation.
+
 ## 0.9.2
 
 ### Patch Changes
