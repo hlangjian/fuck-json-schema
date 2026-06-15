@@ -4,6 +4,31 @@ import type { SchemaMap } from "@huanglangjian/specs"
 import { camelCase } from "text-case"
 import type { ValidationLib } from "./validation-lib"
 
+/**
+ * 遍历模型树，将带 `id` 的命名子模型注册到 schemaMap 中。
+ * 用于注册路由未引用但需要生成类型定义的游离模型。
+ */
+export function addModelsToSchemaMap(models: Models[], schemaMap: SchemaMap): void {
+  const seen = new Set<Models>()
+  const walk = (m: Models) => {
+    if (seen.has(m)) return
+    seen.add(m)
+
+    if ("id" in m && !schemaMap.has(m.id)) {
+      schemaMap.set(m.id, m)
+    }
+
+    if (m.kind === "record") {
+      Object.values(m.properties).forEach((v) => walk(v))
+    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+      Object.values(m.variants).forEach((v) => walk(v))
+    } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
+      walk(m.base)
+    }
+  }
+  for (const model of models) walk(model)
+}
+
 function jsdocTags(model: {
   description?: string
   deprecated?: boolean

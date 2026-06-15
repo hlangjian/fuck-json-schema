@@ -5,24 +5,28 @@ import { groupBy } from "@huanglangjian/specs"
 import { camelCase, pascalCase, snakeCase } from "text-case"
 
 import { resolveLib, type ValidationLib } from "./validation-lib"
-import { generateModels, toSchema, toSchemaEnv, toTs, toColonPath, contentTypeForKind, modelDefault, fieldJsdoc } from "./shared"
+import { generateModels, toSchema, toSchemaEnv, toTs, toColonPath, contentTypeForKind, modelDefault, fieldJsdoc, addModelsToSchemaMap } from "./shared"
 
 export interface TsServerOptions {
   routers: RouterModel[]
   identifier?: (id: string) => string
   namespace?: string
   configuration?: RecordModel<Record<string, Models>, string>
+  models?: Models[]
   validationLib?: "zod" | "valibot"
 }
 
 export function generateTsServer(options: TsServerOptions): Record<string, string> {
-  const { routers, identifier = pascalCase, namespace, configuration, validationLib } = options
+  const { routers, identifier = pascalCase, namespace, configuration, models, validationLib } = options
   const lib = resolveLib(validationLib ?? "zod")
   const operations = collectOperations(routers)
   const schemaMap = collectSchemaMap(operations)
 
+  if (models) {
+    addModelsToSchemaMap(models, schemaMap)
+  }
   if (configuration) {
-    addConfigToSchemaMap(configuration, schemaMap)
+    addModelsToSchemaMap([configuration as Models], schemaMap)
   }
 
   const files: Record<string, string> = {}
@@ -408,27 +412,6 @@ interface CollectResult {
   fields: FieldNode[]
   taggedSwitches: TaggedSwitchNode[]
   unionSwitches: UnionSwitchNode[]
-}
-
-function addConfigToSchemaMap(config: Models, schemaMap: SchemaMap): void {
-  const seen = new Set<Models>()
-  const walk = (m: Models) => {
-    if (seen.has(m)) return
-    seen.add(m)
-
-    if ("id" in m && !schemaMap.has(m.id)) {
-      schemaMap.set(m.id, m)
-    }
-
-    if (m.kind === "record") {
-      Object.values(m.properties).forEach((v) => walk(v))
-    } else if (m.kind === "union" || m.kind === "taggedUnion") {
-      Object.values(m.variants).forEach((v) => walk(v))
-    } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
-      walk(m.base)
-    }
-  }
-  walk(config)
 }
 
 function generateConfig(

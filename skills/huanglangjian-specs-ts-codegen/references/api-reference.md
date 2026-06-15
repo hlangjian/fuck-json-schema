@@ -10,6 +10,7 @@ interface TsServerOptions {
   identifier?: (id: string) => string       // default: pascalCase
   namespace?: string
   configuration?: RecordModel               // server config for env-var generation
+  models?: Models[]                         // extra named models not referenced by any route
   validationLib?: "zod" | "valibot"         // default: "zod"
 }
 ```
@@ -43,6 +44,7 @@ interface TsClientOptions {
   routers: RouterModel[]
   identifier?: (id: string) => string       // default: pascalCase
   namespace?: string
+  models?: Models[]                         // extra named models not referenced by any route
   validationLib?: "zod" | "valibot"         // default: "zod"
 }
 ```

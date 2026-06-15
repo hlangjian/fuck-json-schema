@@ -5,20 +5,26 @@ import { groupBy } from "@huanglangjian/specs"
 import { camelCase, pascalCase } from "text-case"
 
 import { resolveLib, type ValidationLib } from "./validation-lib"
-import { generateModels, toTs, resolveSchemaExpr, collectSchemaRefs, fieldJsdoc } from "./shared"
+import { generateModels, toTs, resolveSchemaExpr, collectSchemaRefs, fieldJsdoc, addModelsToSchemaMap } from "./shared"
 
 export interface TsClientOptions {
   routers: RouterModel[]
   identifier?: (id: string) => string
   namespace?: string
+  models?: Models[]
   validationLib?: "zod" | "valibot"
 }
 
 export function generateTsClient(options: TsClientOptions): Record<string, string> {
-  const { routers, identifier = pascalCase, namespace, validationLib } = options
+  const { routers, identifier = pascalCase, namespace, models, validationLib } = options
   const lib = resolveLib(validationLib ?? "zod")
   const operations = collectOperations(routers)
   const schemaMap = collectSchemaMap(operations)
+
+  if (models) {
+    addModelsToSchemaMap(models, schemaMap)
+  }
+
   const files: Record<string, string> = {}
 
   files["models.ts"] = generateModels(schemaMap, identifier, lib, namespace)
