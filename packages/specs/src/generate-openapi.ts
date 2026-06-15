@@ -1,5 +1,5 @@
 import type { ResponseModel, RouteModel, RouterModel, SimpleType } from "./api"
-import { createOpenapiSchemaRegistry, generateJsonSchema, type SchemaRegistry } from "./generate-jsonschema"
+import { createOpenapiSchemaRegistry, buildJsonSchema, type SchemaRegistry } from "./generate-jsonschema"
 import type { JsonSchema } from "./schemas/json-schema-draft-2020-12"
 import type {
   ComponentsObject,
@@ -85,7 +85,7 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
   const schemas = [...namedModels.entries()].reduce<Record<string, JsonSchema>>(
     (acc, [id, model]) => ({
       ...acc,
-      [id]: generateJsonSchema({ model, registry }).jsonSchema,
+      [id]: buildJsonSchema({ model, registry }).jsonSchema,
     }),
     {} as Record<string, JsonSchema>,
   )
@@ -383,7 +383,7 @@ function generateResponseContent(
 
 function getSchema(model: Models, registry: SchemaRegistry): JsonSchema {
   const ref = registry.getRef(model)
-  return ref ? { $ref: ref } : generateJsonSchema({ model, registry }).jsonSchema
+  return ref ? { $ref: ref } : buildJsonSchema({ model, registry }).jsonSchema
 }
 
 // ---- security helpers ----

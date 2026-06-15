@@ -6,20 +6,60 @@ import type { Models } from "./types"
 export interface SchemaRegistry {
   getRef: (model: Models) => string | undefined
   add: (id: string, model: Models) => SchemaRegistry
+  /** Collect schemas of all registered models for use in $defs / components/schemas. */
+  getDefs(): Record<string, JsonSchema>
 }
 
-export interface GenerateJsonSchemaOptions {
+/**
+ * Internal: converts a single model into its JSON Schema representation.
+ * Does NOT include $schema wrapper or $defs — use generateJsonSchema() for the full document.
+ */
+export interface BuildJsonSchemaOptions {
   model: Models
   registry?: SchemaRegistry
+  /**
+   * 将模型的 `StandardTypedV1` schema 翻译成附加的 JSON Schema 字段
+   *（如 format、pattern、examples 等）。
+   *
+   * StandardTypedV1 是 Standard 家族所有接口的基类型：
+   * - `StandardSchemaV1` —— 纯验证 schema（zod、valibot、arktype），
+   *   有 `validate()` 但没有 JSON Schema 生成能力
+   * - `StandardJSONSchemaV1` —— 自带 `.jsonSchema` 转换器的 schema
+   *   （库自行实现的扩展，很少见）
+   *
+   * 大多数库产出的是 `StandardSchemaV1`，这意味着如果你给模型绑定了
+   * `schema: z.string().email()`，验证时知道它是 email，但生成 JSON Schema
+   * 时无法自动得出 `format: "email"`。每个库需要自己的适配器：
+   *
+   * ```ts
+   * // zod
+   * toJsonSchema: (schema) => zodToJsonSchema(schema as ZodSchema)
+   *
+   * // valibot — 需要独立的包
+   * import { toJsonSchema as vbToJson } from "@valibot/to-json-schema"
+   * toJsonSchema: (schema) => vbToJson(schema as GenericSchema)
+   * ```
+   *
+   * 返回的 `JsonSchemaObject` 会被浅合并到最终 schema 节点上。
+   */
   toJsonSchema?: (type?: StandardTypedV1) => JsonSchemaObject
 }
 
-export interface GenerateJsonSchemaResult {
+export interface BuildJsonSchemaResult {
   jsonSchema: JsonSchema
   registry: SchemaRegistry
 }
 
-export function generateJsonSchema(options: GenerateJsonSchemaOptions): GenerateJsonSchemaResult {
+/**
+ * 内部函数：将单个模型转换为 JSON Schema 片段（不含 $schema 和 $defs）。
+ *
+ * 已在 registry 注册的命名模型会生成 $ref 指针，未注册的则内联展开。
+ * `toJsonSchema` 回调负责将 StandardSchema 翻译为 JSON Schema 字段，
+ * 详见 {@link BuildJsonSchemaOptions.toJsonSchema}。
+ *
+ * 如需完整的 JSON Schema 文档，请使用 `generateJsonSchema()`。
+ */
+export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchemaResult {
   const { model, toJsonSchema = () => ({}) } = options
 
   const registry = options.registry ?? createJsonSchemaRegistry()
@@ -94,7 +134,7 @@ export function generateJsonSchema(options: GenerateJsonSchemaOptions): Generate
       }
 
     case "array": {
-      const { jsonSchema, registry: newRegistry } = generateJsonSchema({
+      const { jsonSchema, registry: newRegistry } = buildJsonSchema({
         model: model.base,
         registry,
         toJsonSchema,
@@ -107,7 +147,7 @@ export function generateJsonSchema(options: GenerateJsonSchemaOptions): Generate
     }
 
     case "map": {
-      const { jsonSchema, registry: newRegistry } = generateJsonSchema({
+      const { jsonSchema, registry: newRegistry } = buildJsonSchema({
         model: model.base,
         registry,
         toJsonSchema,
@@ -120,7 +160,7 @@ export function generateJsonSchema(options: GenerateJsonSchemaOptions): Generate
     }
 
     case "set": {
-      const { jsonSchema, registry: newRegistry } = generateJsonSchema({
+      const { jsonSchema, registry: newRegistry } = buildJsonSchema({
         model: model.base,
         registry,
         toJsonSchema,
@@ -147,7 +187,7 @@ export function generateJsonSchema(options: GenerateJsonSchemaOptions): Generate
             }
           }
 
-          const generated = generateJsonSchema({
+          const generated = buildJsonSchema({
             model: propModel,
             registry: acc.registry,
             toJsonSchema,
@@ -195,7 +235,7 @@ export function generateJsonSchema(options: GenerateJsonSchemaOptions): Generate
             }
           }
 
-          const generated = generateJsonSchema({
+          const generated = buildJsonSchema({
             model: variantModel,
             registry: acc.registry,
             toJsonSchema,
@@ -237,7 +277,7 @@ export function generateJsonSchema(options: GenerateJsonSchemaOptions): Generate
             }
           }
 
-          const generated = generateJsonSchema({
+          const generated = buildJsonSchema({
             model: variantModel,
             registry: acc.registry,
             toJsonSchema,
@@ -268,8 +308,13 @@ export function createJsonSchemaRegistry(models?: Map<Models, { id: string; sche
       return entry ? "#/$defs/" + entry.id : undefined
     },
     add(id, model) {
-      const { jsonSchema } = generateJsonSchema({ model, registry })
+      const { jsonSchema } = buildJsonSchema({ model, registry })
       return createJsonSchemaRegistry(map.set(model, { id, schema: jsonSchema }))
+    },
+    getDefs() {
+      const defs: Record<string, JsonSchema> = {}
+      map.forEach(({ id, schema }) => { defs[id] = schema })
+      return defs
     },
   }
 
@@ -285,10 +330,43 @@ export function createOpenapiSchemaRegistry(models?: Map<Models, { id: string; s
       return entry ? "#/components/schemas/" + entry.id : undefined
     },
     add(id, model) {
-      const { jsonSchema } = generateJsonSchema({ model, registry })
+      const { jsonSchema } = buildJsonSchema({ model, registry })
       return createOpenapiSchemaRegistry(map.set(model, { id, schema: jsonSchema }))
+    },
+    getDefs() {
+      const defs: Record<string, JsonSchema> = {}
+      map.forEach(({ id, schema }) => { defs[id] = schema })
+      return defs
     },
   }
 
   return registry
+}
+
+/**
+ * Generate a complete JSON Schema (Draft 2020-12) for the given model and its
+ * named dependencies. Dependencies registered via `schemas` produce $ref
+ * pointers and are collected into $defs.
+ *
+ * @example
+ * generateJsonSchema({
+ *   model: ServerConfig,
+ *   schemas: { PostgresConfig, SqliteConfig },
+ * })
+ * // → { $schema: "...", type: "object", properties: {...}, $defs: {...} }
+ */
+export function generateJsonSchema(options: {
+  model: Models
+  schemas: Record<string, Models>
+}): JsonSchemaObject {
+  const registry = Object.entries(options.schemas).reduce(
+    (reg, [id, m]) => reg.add(id, m),
+    createJsonSchemaRegistry(),
+  )
+  const { jsonSchema } = buildJsonSchema({ model: options.model, registry })
+  return {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    ...(jsonSchema as Record<string, unknown>),
+    $defs: registry.getDefs(),
+  } as JsonSchemaObject
 }

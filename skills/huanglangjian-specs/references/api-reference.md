@@ -54,35 +54,31 @@ interface GenerateOpenapiOptions {
 
 Automatically collects all named models from route bodies/responses, generates `components/schemas`, path items, operations, parameters (path/query/header), request bodies, and responses. If `security.policy` is provided, generates `components/securitySchemes` and injects per-operation `security` requirements based on path pattern matching.
 
-## `generateJsonSchema(options)` → `{ jsonSchema, registry }`
+## `generateJsonSchema({ model, schemas })` → `JsonSchemaObject`
 
-Converts a single model to JSON Schema (Draft 2020-12).
+Generate a complete JSON Schema (Draft 2020-12) for the given root model and its named dependencies.
 
 ```ts
-interface GenerateJsonSchemaOptions {
-  model: Models
-  registry?: SchemaRegistry
-  toJsonSchema?: (type?: StandardTypedV1) => JsonSchemaObject
-}
+generateJsonSchema({ model: Models, schemas: Record<string, Models> })
 ```
 
-Two registry factories:
+The `model` is expanded as the top-level schema body. Dependencies in `schemas` produce `$ref` pointers and are collected into `$defs`.
+
+```ts
+const schema = generateJsonSchema({
+  model: ServerConfig,
+  schemas: { PostgresConfig, SqliteConfig },
+})
+// → { $schema: "...draft-2020-12", type: "object", properties: {...}, $defs: { PostgresConfig: {...}, SqliteConfig: {...} } }
+```
+
+## Registry factories
+
+Two registry factories for advanced use:
 - `createJsonSchemaRegistry()` — `$ref` paths use `#/$defs/`
 - `createOpenapiSchemaRegistry()` — `$ref` paths use `#/components/schemas/`
 
 The `SchemaRegistry` is immutable; `.add(id, model)` returns a new registry.
-
-## `mergeJsonSchemas(schemas)` → `JsonSchemaObject`
-
-Merges multiple named models into a single JSON Schema with `$defs`.
-
-```ts
-const schema = mergeJsonSchemas({
-  ServerConfig: serverConfigRecord,
-  PostgresConfig: postgresRecord,
-})
-// → { $schema: "...draft-2020-12", $defs: { ServerConfig: {...}, PostgresConfig: {...} } }
-```
 
 ## Codegen IR functions
 

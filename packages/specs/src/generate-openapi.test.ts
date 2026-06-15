@@ -3,16 +3,16 @@ import { describe, expect, it, vi } from "vitest"
 import type { HttpMethod } from "./api"
 import { json, route } from "./api"
 import { generateOpenapi } from "./generate-openapi"
-import { generateJsonSchema } from "./generate-jsonschema"
+import { buildJsonSchema } from "./generate-jsonschema"
 import type { JsonSchemaObject } from "./schemas/json-schema-draft-2020-12"
 import { apikey, openIdConnect } from "./security"
 import type { SecurityPolicyModel } from "./security"
 import { deployOpenIdConnect } from "./deployment"
 import { array, int32, record, string } from "./types"
 
-describe("generateJsonSchema", () => {
+describe("buildJsonSchema", () => {
   it("generates schema for int32", () => {
-    const { jsonSchema } = generateJsonSchema({ model: int32() })
+    const { jsonSchema } = buildJsonSchema({ model: int32() })
     const s = jsonSchema as JsonSchemaObject
     expect(s.type).toBe("integer")
     expect(s.format).toBe("int32")
@@ -23,7 +23,7 @@ describe("generateJsonSchema", () => {
       id: "User",
       properties: { name: string() },
     })
-    const { jsonSchema } = generateJsonSchema({ model })
+    const { jsonSchema } = buildJsonSchema({ model })
     const s = jsonSchema as JsonSchemaObject
     expect(s.type).toBe("object")
     expect(s.additionalProperties).toBe(false)

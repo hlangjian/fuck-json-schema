@@ -6,7 +6,7 @@ Complete warehouse CRUD example:
 import { int32, string, datetime, array, record, enums, set, literal, taggedUnion, union } from "@huanglangjian/specs"
 import { route, json, binary as binaryResponse, routerModel } from "@huanglangjian/specs"
 import { generateOpenapi } from "@huanglangjian/specs"
-import { mergeJsonSchemas } from "@huanglangjian/specs"
+import { generateJsonSchema } from "@huanglangjian/specs"
 import { apikey, openIdConnect } from "@huanglangjian/specs"
 import { deployOpenIdConnect } from "@huanglangjian/specs"
 
@@ -169,9 +169,10 @@ const { openapi } = generateOpenapi({
 // → write: JSON.stringify(openapi, null, 2)
 
 // 6. Generate server config JSON Schema
-const configSchema = mergeJsonSchemas({
-  ServerConfig, PostgresConfig, SqliteConfig,
+const configSchema = generateJsonSchema({
+  model: ServerConfig,
+  schemas: { PostgresConfig, SqliteConfig },
   // ... all nested named records
 })
-// → JSON Schema with $schema + $defs
+// → JSON Schema with $schema + properties + $defs
 ```

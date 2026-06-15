@@ -6,7 +6,7 @@ import type { HttpMethod } from "./api"
 import { binary as binaryResponse, json, route, routerModel } from "./api"
 import { generateOpenapi } from "./generate-openapi"
 import { collectNamedModels, collectOperations } from "./codegen/collect"
-import { mergeJsonSchemas } from "./codegen/json-schema"
+import { generateJsonSchema } from "./generate-jsonschema"
 import { apikey, openIdConnect } from "./security"
 import type { SecurityPolicyModel } from "./security"
 import { deployOpenIdConnect } from "./deployment"
@@ -258,7 +258,17 @@ writeFileSync(resolve(outDir, "openapi.json"), JSON.stringify(openapi, null, 2),
 console.log("✅ openapi.json")
 
 // 2. Server config JSON Schema
-const configSchema = mergeJsonSchemas({ ServerConfig, PostgresConfig, SqliteConfig, AuthPassword: record({ id: "AuthPassword", properties: { method: literal("password"), username: string(), password: string() } }), AuthCert: record({ id: "AuthCert", properties: { method: literal("cert"), certFile: string(), keyFile: string() } }), RedisCache: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, optional: ["prefix"] }), MemoryCache: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, optional: ["ttl"] }) })
+const configSchema = generateJsonSchema({
+  model: ServerConfig,
+  schemas: {
+    PostgresConfig,
+    SqliteConfig,
+    AuthPassword: record({ id: "AuthPassword", properties: { method: literal("password"), username: string(), password: string() } }),
+    AuthCert: record({ id: "AuthCert", properties: { method: literal("cert"), certFile: string(), keyFile: string() } }),
+    RedisCache: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, optional: ["prefix"] }),
+    MemoryCache: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, optional: ["ttl"] }),
+  },
+})
 
 writeFileSync(resolve(outDir, "server-config.schema.json"), JSON.stringify(configSchema, null, 2), "utf-8")
 console.log("✅ server-config.schema.json")
