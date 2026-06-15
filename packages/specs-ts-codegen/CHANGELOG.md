@@ -1,5 +1,15 @@
 # @huanglangjian/specs-ts-codegen
 
+## 0.12.0
+
+### Minor Changes
+
+- 6c1ccbd: feat: add optional models parameter to generator options
+
+  - `TsServerOptions.models` and `TsClientOptions.models` accept free models not referenced by any route
+  - `addModelsToSchemaMap()` in `shared.ts` walks model trees and registers named sub-models into schemaMap
+  - Removed old single-model `addConfigToSchemaMap`; configuration injection now also uses the new helper
+
 ## 0.11.1
 
 ### Patch Changes
