@@ -121,6 +121,12 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
         registry,
       }
 
+    case "uuid":
+      return {
+        jsonSchema: { ...schema, type: "string", format: "uuid" },
+        registry,
+      }
+
     case "literal":
       return {
         jsonSchema: { ...schema, const: model.value },

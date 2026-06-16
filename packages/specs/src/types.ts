@@ -133,6 +133,10 @@ export interface DurationModel extends BasicModel<string> {
   kind: "duration"
 }
 
+export interface UuidModel extends BasicModel<string> {
+  kind: "uuid"
+}
+
 export type Models =
   | Int32Model
   | Float32Model
@@ -151,6 +155,7 @@ export type Models =
   | DatetimeModel
   | DateModel
   | DurationModel
+  | UuidModel
 
 export type InferModel<T> = T extends { schema?: StandardTypedV1<unknown, unknown> }
   ? StandardTypedV1.InferOutput<NonNullable<T["schema"]>>
@@ -250,4 +255,10 @@ export interface DurationModelOptions extends Omit<DurationModel, "kind"> {}
 
 export function duration(options?: DurationModelOptions): DurationModel {
   return { kind: "duration", ...options }
+}
+
+export interface UuidModelOptions extends Omit<UuidModel, "kind"> {}
+
+export function uuid(options?: UuidModelOptions): UuidModel {
+  return { kind: "uuid", ...options }
 }

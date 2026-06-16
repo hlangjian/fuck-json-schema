@@ -12,6 +12,7 @@ Every model is a plain object with a `kind` discriminator. All models support op
 | `datetime` | `datetime(opts?)` | `type: "string", format: "date-time"` |
 | `date` | `date(opts?)` | `type: "string", format: "date"` |
 | `duration` | `duration(opts?)` | `type: "string", format: "duration"` |
+| `uuid` | `uuid(opts?)` | `type: "string", format: "uuid"` |
 | `literal` | `literal(value)` | `const: value` |
 | `null` | `nullLike()` | `type: "null"` |
 | `array` | `array({ base: T, ... })` | `type: "array", items: T` |

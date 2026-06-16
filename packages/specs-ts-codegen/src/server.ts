@@ -110,14 +110,15 @@ function generateOpFile(
     }
   }
 
-  const allImports = [...new Set([...schemaImports, ...typeImports])]
-  if (allImports.length > 0 || schemaImports.length > 0) {
-    const parts: string[] = []
-    if (typeImports.length > 0) parts.push(typeImports.join(", "))
-    if (schemaImports.length > 0) parts.push(schemaImports.join(", "))
-    lines.push(`import { ${parts.join(", ")} } from "../models"`)
+  if (typeImports.length > 0) {
+    lines.push(`import type { ${typeImports.join(", ")} } from "../models"`)
   }
-  lines.push("")
+  if (schemaImports.length > 0) {
+    lines.push(`import { ${schemaImports.join(", ")} } from "../models"`)
+  }
+  if (typeImports.length > 0 || schemaImports.length > 0) {
+    lines.push("")
+  }
 
   if (hasParams) {
     const fields = Object.entries(operation.pathVariables).map(
@@ -329,9 +330,8 @@ function generateIndex(operations: OperationDescriptor[]): string {
   for (const operation of operations) {
     const operationName = camelCase(operation.id)
     const OperationName = pascalCase(operation.id)
-    lines.push(
-      `import { ${operationName}, ${OperationName}Operation } from "./${camelCase(operation.group)}/${operationName}"`,
-    )
+    lines.push(`import { ${operationName} } from "./${camelCase(operation.group)}/${operationName}"`)
+    lines.push(`import type { ${OperationName}Operation } from "./${camelCase(operation.group)}/${operationName}"`)
   }
 
   lines.push("")
@@ -555,6 +555,7 @@ function collectLevel(
       case "datetime":
       case "date":
       case "duration":
+      case "uuid":
       case "literal":
       case "null":
         envVars.push({ envName: envPrefix, schemaExpr: toSchemaEnv(model as Models, {} as SchemaMap, lib) })
@@ -690,6 +691,7 @@ function isSimpleType(model: Models): boolean {
     "datetime",
     "date",
     "duration",
+    "uuid",
     "literal",
     "enums",
   ].includes(model.kind)

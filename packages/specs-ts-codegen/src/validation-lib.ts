@@ -11,6 +11,7 @@ export interface ValidationLib {
   datetime(): string
   date(): string
   duration(): string
+  uuid(): string
   literal(value: unknown): string
   null(): string
   unknown(): string
@@ -46,6 +47,7 @@ export const zodLib: ValidationLib = {
   datetime: () => "z.string().datetime()",
   date: () => "z.string().date()",
   duration: () => "z.string()",
+  uuid: () => "z.string().uuid()",
   literal: (v) => `z.literal(${escape(v)})`,
   null: () => "z.null()",
   unknown: () => "z.unknown()",
@@ -84,6 +86,7 @@ export const valibotLib: ValidationLib = {
   datetime: () => "v.pipe(v.string(), v.isoDateTime())",
   date: () => "v.pipe(v.string(), v.isoDate())",
   duration: () => "v.string()",
+  uuid: () => "v.pipe(v.string(), v.uuid())",
   literal: (v) => `v.literal(${escape(v)})`,
   null: () => "v.null()",
   unknown: () => "v.unknown()",

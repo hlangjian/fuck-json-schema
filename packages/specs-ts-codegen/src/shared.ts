@@ -158,6 +158,8 @@ export function toSchema(model: Models, schemaMap: SchemaMap, lib: ValidationLib
       return lib.date()
     case "duration":
       return lib.duration()
+    case "uuid":
+      return lib.uuid()
     case "literal":
       return lib.literal(model.value)
     case "null":
@@ -219,6 +221,7 @@ export function toTs(
     case "datetime":
     case "date":
     case "duration":
+    case "uuid":
       return "string"
     case "literal":
       return JSON.stringify(model.value)

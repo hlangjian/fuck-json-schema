@@ -9,6 +9,7 @@ import {
   type Models,
   type RecordModel,
   type StringModel,
+  type UuidModel,
 } from "./types"
 import type { ExtractPathParams } from "./utils"
 
@@ -23,6 +24,7 @@ export type SimpleType =
   | DatetimeModel
   | DateModel
   | DurationModel
+  | UuidModel
 
 export interface RouterModel {
   basePath?: string

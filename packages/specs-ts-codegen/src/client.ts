@@ -88,17 +88,19 @@ function generateClientFn(
   const isStreamLike = okKind === "stream-response" || okKind === "sse-response" || okKind === "binary"
   const okSchema = okModel ? resolveSchemaExpr(okModel, schemaMap, lib) : null
 
-  const allModelImports = [...typeImports]
+  const schemaImports: string[] = []
   if (okSchema && !isStreamLike) {
-    const schemaRefs = collectSchemaRefs(okModel!, schemaMap)
-    for (const ref of schemaRefs) {
-      if (!allModelImports.includes(ref)) allModelImports.push(ref)
-    }
+    schemaImports.push(...collectSchemaRefs(okModel!, schemaMap))
   }
-  if (allModelImports.length > 0) {
-    lines.push(`import { ${allModelImports.join(", ")} } from "../models"`)
+  if (typeImports.length > 0) {
+    lines.push(`import type { ${typeImports.join(", ")} } from "../models"`)
   }
-  lines.push("")
+  if (schemaImports.length > 0) {
+    lines.push(`import { ${schemaImports.join(", ")} } from "../models"`)
+  }
+  if (typeImports.length > 0 || schemaImports.length > 0) {
+    lines.push("")
+  }
 
   const opDoc = opJsdoc(operation)
   if (opDoc) lines.push(opDoc)
@@ -245,7 +247,8 @@ function generateClientIndex(operations: OperationDescriptor[]): string {
     for (const operation of groupOps) {
       const n = camelCase(operation.id)
       const OperationName = pascalCase(operation.id)
-      lines.push(`export { ${n}, ${OperationName}Operation } from "./${camelCase(operation.group)}/${n}"`)
+      lines.push(`export { ${n} } from "./${camelCase(operation.group)}/${n}"`)
+      lines.push(`export type { ${OperationName}Operation } from "./${camelCase(operation.group)}/${n}"`)
     }
     lines.push("")
   }
