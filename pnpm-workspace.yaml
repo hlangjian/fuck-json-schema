@@ -1,9 +1,9 @@
 packages:
   - packages/*
-  - packages/generators/*
 allowBuilds:
   lefthook: true
   esbuild: true
+  sharp: true
 minimumReleaseAgeExclude:
   - prettier-plugin-java@2.9.4
   - '@turbo/darwin-64@2.9.18'

@@ -2,6 +2,8 @@
 
 Every model is a plain object with a `kind` discriminator. All models support optional `title`, `description`, `examples`, and `schema` (a [StandardSchema](https://standardschema.dev/) validator for runtime type inference).
 
+Use the factory (left column). The right column shows generated output — do not write it directly.
+
 | Kind | Factory | OpenAPI / JSON Schema mapping |
 |---|---|---|
 | `int32` | `int32(opts?)` | `type: "integer", format: "int32"` |

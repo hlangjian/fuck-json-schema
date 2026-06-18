@@ -28,7 +28,7 @@ ESM-only. All exports re-exported from the barrel index.
 
 Three layers: **Models** → **Routes** → **Generators**.
 
-All models are plain objects with a `kind` discriminator. Support optional `title`, `description`, `examples`, and `schema` (StandardSchema validator).
+All models have typed factory functions. When unclear about options or signatures, consult the source files directly — `types.ts` and `api.ts` are the single source of truth (see [Source map](./references/source-map.md)).
 
 Key factories: `int32`, `string`, `boolean`, `datetime`, `record`, `enums`, `union`, `taggedUnion`, `literal`, `nullLike`, `array`, `set`, `map`, `route`, `json`, `binary`, `sseStream`, `jsonStream`, `routerModel`.
 

@@ -133,19 +133,19 @@ export interface ResponseOptions<Body extends Models, Headers extends RecordMode
 }
 
 export function json<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>>(
-  options: ResponseOptions<Body, Headers>,
+  options?: ResponseOptions<Body, Headers>,
 ): JsonResponseModel<Body, Headers> {
   return { kind: "json-response", ...options }
 }
 
 export function jsonStream<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>>(
-  options: ResponseOptions<Body, Headers>,
+  options?: ResponseOptions<Body, Headers>,
 ): StreamResponseModel<Body, Headers> {
   return { kind: "stream-response", ...options }
 }
 
 export function sseStream<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>>(
-  options: ResponseOptions<Body, Headers>,
+  options?: ResponseOptions<Body, Headers>,
 ): SSEResponseModel<Body, Headers> {
   return { kind: "sse-response", ...options }
 }
@@ -157,7 +157,7 @@ export interface BinaryResponseOptions<Headers extends RecordModel<Record<string
 }
 
 export function binary<Headers extends RecordModel<Record<string, Models>, string>>(
-  options: BinaryResponseOptions<Headers>,
+  options?: BinaryResponseOptions<Headers>,
 ): BinaryResponseModel<Headers> {
   return { kind: "binary", ...options }
 }
@@ -209,6 +209,11 @@ export type BinaryLikeContentType =
 
 export type FormLikeContentType = (string & {}) | "application/x-www-form-urlencoded" | "multipart/form-data"
 
-export function routerModel(options: { name: string; basePath?: string; description?: string; routes: RouterModel["routes"] }): RouterModel {
+export function routerModel(options: {
+  name: string
+  basePath?: string
+  description?: string
+  routes: RouterModel["routes"]
+}): RouterModel {
   return options
 }

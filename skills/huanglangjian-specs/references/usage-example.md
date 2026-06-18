@@ -25,6 +25,8 @@ const Warehouse = record({
 
 const CreateWarehouse = record({
   id: "CreateWarehouse",
+  title: "创建仓库",
+  description: "创建仓库请求体",
   properties: {
     name: string({ description: "仓库名称" }),
     location: string({ description: "仓库位置" }),
@@ -34,15 +36,18 @@ const CreateWarehouse = record({
 
 const UpdateWarehouse = record({
   id: "UpdateWarehouse",
+  title: "更新仓库",
+  description: "更新仓库请求体",
   properties: {
-    name: string(),
-    location: string(),
-    capacity: int32(),
+    name: string({ description: "仓库名称" }),
+    location: string({ description: "仓库位置" }),
+    capacity: int32({ description: "最大容量" }),
   },
 })
 
 const ErrorResponse = record({
   id: "ErrorResponse",
+  title: "错误响应",
   properties: { message: string({ description: "错误信息" }) },
 })
 
@@ -51,17 +56,22 @@ const PostgresConfig = record({
   id: "PostgresConfig",
   properties: {
     type: literal("postgres"),
-    host: string(), port: int32(), username: string(), password: string(),
+    host: string({ description: "主机地址" }),
+    port: int32({ description: "端口" }),
+    username: string({ description: "数据库用户名" }),
+    password: string({ description: "数据库密码" }),
   },
 })
 
 const SqliteConfig = record({
   id: "SqliteConfig",
-  properties: { type: literal("sqlite"), name: string() },
+  properties: { type: literal("sqlite"), name: string({ description: "数据库文件名" }) },
 })
 
 const ServerConfig = record({
   id: "ServerConfig",
+  title: "服务端配置",
+  description: "服务端运行时配置",
   properties: {
     port: int32({ description: "监听端口" }),
     host: string({ description: "监听地址" }),
@@ -80,8 +90,8 @@ const ServerConfig = record({
     cache: union({
       id: "CacheConfig",
       variants: {
-        redis: record({ id: "RedisCache", properties: { url: string(), prefix: string() }, optional: ["prefix"] }),
-        memory: record({ id: "MemoryCache", properties: { maxSize: int32(), ttl: int32() }, optional: ["ttl"] }),
+        redis: record({ id: "RedisCache", properties: { url: string({ description: "Redis 连接地址" }), prefix: string({ description: "缓存键前缀" }) }, optional: ["prefix"] }),
+        memory: record({ id: "MemoryCache", properties: { maxSize: int32({ description: "最大缓存条目数" }), ttl: int32({ description: "缓存过期秒数" }) }, optional: ["ttl"] }),
       },
     }),
   },
@@ -119,7 +129,7 @@ const router = routerModel({
     updateWarehouse: route({
       method: "PUT",
       path: "/warehouses/{id}",
-      variables: { id: int32() },
+      variables: { id: int32({ description: "仓库ID" }) },
       body: UpdateWarehouse,
       responses: {
         "200": json({ summary: "更新成功", body: Warehouse }),
@@ -129,7 +139,7 @@ const router = routerModel({
     deleteWarehouse: route({
       method: "DELETE",
       path: "/warehouses/{id}",
-      variables: { id: int32() },
+      variables: { id: int32({ description: "仓库ID" }) },
       responses: {
         "204": json({ summary: "删除成功" }),
         "404": json({ summary: "仓库不存在", body: ErrorResponse }),
