@@ -30,7 +30,8 @@ export type SimpleType =
 
 export interface RouterModel {
   basePath?: string
-  name: string
+  id: string
+  tag?: string
   description?: string
   routes: Record<
     string,
@@ -225,8 +226,9 @@ export type HttpContentType =
   | BinaryLikeContentType
   | FormLikeContentType
 
-export function routerModel(options: {
-  name: string
+export function router(options: {
+  id: string
+  tag?: string
   basePath?: string
   description?: string
   routes: RouterModel["routes"]

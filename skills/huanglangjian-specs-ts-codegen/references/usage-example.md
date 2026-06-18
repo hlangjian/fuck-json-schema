@@ -2,12 +2,12 @@
 
 ```ts
 import { generateTsServer, generateTsClient } from "@huanglangjian/specs-ts-codegen"
-import { routerModel } from "@huanglangjian/specs"
+import { router } from "@huanglangjian/specs"
 import type { RouterModel } from "@huanglangjian/specs"
 
-// Define routers using the routerModel() factory
+// Define routers using the router() factory
 const routers: RouterModel[] = [
-  routerModel({ name: "Warehouses", routes: { ... } }),
+  router({ id: "Warehouses", routes: { ... } }),
 ]
 
 // Generate server handlers

@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { binary as binaryResponse, json, route, routerModel } from "@huanglangjian/specs"
+import { binary as binaryResponse, json, route, router } from "@huanglangjian/specs"
 import { array, datetime, enums, int32, literal, record, set, string, taggedUnion, union } from "@huanglangjian/specs"
 import { generateTsServer } from "./server"
 import { generateTsClient } from "./client"
@@ -132,8 +132,8 @@ const ServerConfig = record({
   optional: ["logLevel", "tags", "allowedPorts", "cache"],
 })
 
-const router = routerModel({
-  name: "Warehouses",
+const router = router({
+  id: "Warehouses",
   description: "仓库管理 API 集合",
   routes: {
     listWarehouses: route({

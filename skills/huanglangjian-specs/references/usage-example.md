@@ -4,7 +4,7 @@ Complete warehouse CRUD example:
 
 ```ts
 import { int32, string, datetime, array, record, enums, set, literal, taggedUnion, union } from "@huanglangjian/specs"
-import { route, json, binary as binaryResponse, routerModel } from "@huanglangjian/specs"
+import { route, json, binary as binaryResponse, router } from "@huanglangjian/specs"
 import { generateOpenapi } from "@huanglangjian/specs"
 import { generateJsonSchema } from "@huanglangjian/specs"
 import { apikey, openIdConnect } from "@huanglangjian/specs"
@@ -99,9 +99,9 @@ const ServerConfig = record({
   optional: ["logLevel", "cache"],
 })
 
-// 3. Define routes — use routerModel() factory, no tags needed (auto from name)
-const router = routerModel({
-  name: "Warehouses",
+// 3. Define routes — use router() factory, no tags needed (auto from id)
+const router = router({
+  id: "Warehouses",
   routes: {
     listWarehouses: route({
       method: "GET",

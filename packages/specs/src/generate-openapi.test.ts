@@ -52,7 +52,7 @@ describe("generateOpenapi", () => {
   it("generates openapi with correct structure", () => {
     const { openapi } = generateOpenapi({
       info: { title: "Test", version: "1.0.0" },
-      routers: [{ name: "TestGroup", routes: router }],
+      routers: [{ id: "TestGroup", routes: router }],
     })
     expect(openapi.openapi).toBe("3.2.0")
     expect(openapi.info.title).toBe("Test")
@@ -80,7 +80,7 @@ describe("generateOpenapi", () => {
 
     const { openapi } = generateOpenapi({
       info: { title: "Test", version: "1.0.0" },
-      routers: [{ name: "TestGroup", routes: router }],
+      routers: [{ id: "TestGroup", routes: router }],
       security: { policy },
     })
 
@@ -119,7 +119,7 @@ describe("generateOpenapi", () => {
 
     const { openapi } = generateOpenapi({
       info: { title: "Test", version: "1.0.0" },
-      routers: [{ name: "TestGroup", routes: router }],
+      routers: [{ id: "TestGroup", routes: router }],
       security: { policy, deployments: { keycloak: deploy } },
     })
 
@@ -153,7 +153,7 @@ describe("generateOpenapi", () => {
 
     generateOpenapi({
       info: { title: "Test", version: "1.0.0" },
-      routers: [{ name: "TestGroup", routes: router }],
+      routers: [{ id: "TestGroup", routes: router }],
       security: { policy },
     })
 
@@ -164,7 +164,7 @@ describe("generateOpenapi", () => {
     warnSpy.mockRestore()
   })
 
-  it("merges routes across multiple RouterModels", () => {
+  it("merges routes across multiple routers", () => {
     const routerA = {
       list: route({
         method: "GET",
@@ -185,8 +185,8 @@ describe("generateOpenapi", () => {
     const { openapi } = generateOpenapi({
       info: { title: "Test", version: "1.0.0" },
       routers: [
-        { name: "Warehouses", routes: routerA },
-        { name: "Items", routes: routerB },
+        { id: "Warehouses", routes: routerA },
+        { id: "Items", routes: routerB },
       ],
     })
 
@@ -206,7 +206,7 @@ describe("generateOpenapi", () => {
 
     const { openapi } = generateOpenapi({
       info: { title: "Test", version: "1.0.0" },
-      routers: [{ name: "V1", basePath: "/api/v1", routes: r }],
+      routers: [{ id: "V1", basePath: "/api/v1", routes: r }],
     })
 
     expect(openapi.paths?.["/api/v1/warehouses"]).toBeDefined()

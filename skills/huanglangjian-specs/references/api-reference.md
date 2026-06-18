@@ -11,7 +11,7 @@ route({
   queries?: RecordModel<...>,              // query parameters
   headers?: RecordModel<...>,              // request headers
   responses: Record<string, ResponseModel>,  // status code -> response
-  tags?: string[],                         // auto-populated from RouterModel.name, only set for extra tags
+  tags?: string[],                         // auto-populated from RouterModel.id, only set for extra tags
   summary?: string,
   description?: string,
   contentType?: string,
@@ -27,11 +27,13 @@ Response types:
 ## Router grouping
 
 ```ts
-import { routerModel } from "@huanglangjian/specs"
+import { router } from "@huanglangjian/specs"
 
-const router = routerModel({
-  name: "Warehouses",
+const r = router({
+  id: "Warehouses",
+  tag: "仓库",           // optional: overrides OpenAPI tag name
   basePath: "/api/v1",   // optional
+  description: "...",    // optional
   routes: { myRoute, anotherRoute, ... },
 })
 ```

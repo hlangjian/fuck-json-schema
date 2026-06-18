@@ -72,7 +72,7 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
   const flatRoutes: FlatRoute[] = routers.flatMap((rm) =>
     Object.entries(rm.routes).map(([_key, route]) => ({
       route,
-      group: rm.name,
+      group: rm.id,
       fullPath: joinPath(rm.basePath ?? "", route.path),
     })),
   )
@@ -95,8 +95,9 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
   const hasSchemas = Object.keys(schemas).length > 0
 
   const tags = routers.reduce<TagObject[]>((acc, rm) => {
-    if (!acc.some((t) => t.name === rm.name)) {
-      const tag: TagObject = { name: rm.name }
+    const tagName = rm.tag ?? rm.id
+    if (!acc.some((t) => t.name === tagName)) {
+      const tag: TagObject = { name: tagName }
       if (rm.description) tag.description = rm.description
       acc.push(tag)
     }

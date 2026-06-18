@@ -3,7 +3,7 @@ import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import type { HttpMethod } from "./api"
-import { binary as binaryResponse, json, route, routerModel } from "./api"
+import { binary as binaryResponse, json, route, router } from "./api"
 import { generateOpenapi } from "./generate-openapi"
 import { collectNamedModels, collectOperations } from "./codegen/collect"
 import { generateJsonSchema } from "./generate-jsonschema"
@@ -138,8 +138,8 @@ const ServerConfig = record({
   optional: ["logLevel", "tags", "allowedPorts", "cache"],
 })
 
-const router = routerModel({
-  name: "Warehouses",
+const router = router({
+  id: "Warehouses",
   description: "仓库管理 API 集合",
   routes: {
     listWarehouses: route({
