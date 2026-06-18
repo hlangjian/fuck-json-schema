@@ -1,5 +1,12 @@
 # @huanglangjian/specs-ts-codegen
 
+## 0.12.3
+
+### Patch Changes
+
+- Updated dependencies [d1e559c]
+  - @huanglangjian/specs@0.12.4
+
 ## 0.12.2
 
 ### Patch Changes
