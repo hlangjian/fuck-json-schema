@@ -9,6 +9,7 @@ import { generateOpenapi } from "@huanglangjian/specs"
 import { generateJsonSchema } from "@huanglangjian/specs"
 import { apikey, openIdConnect } from "@huanglangjian/specs"
 import { deployOpenIdConnect } from "@huanglangjian/specs"
+import { zodToJsonSchema } from "zod-to-json-schema"
 
 // 1. Define data models
 const Warehouse = record({
@@ -175,6 +176,8 @@ const { openapi } = generateOpenapi({
   info: { title: "Warehouse API", version: "1.0.0" },
   routers: [router],
   security: { policy: securityPolicy, deployments: { keycloak: keycloakDeployment } },
+  // Optional: library-specific adapter to extract Zod/Valibot schema metadata (default, format, etc.)
+  toJsonSchema: (schema) => zodToJsonSchema(schema as any),
 })
 // → write: JSON.stringify(openapi, null, 2)
 

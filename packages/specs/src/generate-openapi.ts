@@ -1,5 +1,5 @@
 import type { ResponseModel, RouteModel, RouterModel, SimpleType } from "./api"
-import { createOpenapiSchemaRegistry, buildJsonSchema, type SchemaRegistry } from "./generate-jsonschema"
+import { createOpenapiSchemaRegistry, buildJsonSchema, type SchemaRegistry, type ToJsonSchema } from "./generate-jsonschema"
 import type { JsonSchema } from "./schemas/json-schema-draft-2020-12"
 import type {
   ComponentsObject,
@@ -45,6 +45,7 @@ export interface GenerateOpenapiOptions {
     policy?: SecurityPolicyModel
     deployments?: Record<string, SecurityDeployment>
   }
+  toJsonSchema?: ToJsonSchema
 }
 
 interface FlatRoute {
@@ -66,7 +67,7 @@ function joinPath(basePath: string, routePath: string): string {
 }
 
 export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenapiResult {
-  const { info, servers, routers, security } = options
+  const { info, servers, routers, security, toJsonSchema } = options
 
   const flatRoutes: FlatRoute[] = routers.flatMap((rm) =>
     Object.entries(rm.routes).map(([_key, route]) => ({
@@ -80,13 +81,13 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
 
   const registry = [...namedModels.entries()].reduce<SchemaRegistry>(
     (reg, [id, model]) => reg.add(id, model),
-    createOpenapiSchemaRegistry(),
+    createOpenapiSchemaRegistry(undefined, toJsonSchema),
   )
 
   const schemas = [...namedModels.entries()].reduce<Record<string, JsonSchema>>(
     (acc, [id, model]) => ({
       ...acc,
-      [id]: buildJsonSchema({ model, registry }).jsonSchema,
+      [id]: buildJsonSchema({ model, registry, toJsonSchema }).jsonSchema,
     }),
     {} as Record<string, JsonSchema>,
   )
@@ -102,7 +103,7 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
     return acc
   }, [])
 
-  const paths = generatePaths(flatRoutes, registry)
+  const paths = generatePaths(flatRoutes, registry, toJsonSchema)
 
   let components: ComponentsObject | undefined = hasSchemas ? { schemas } : undefined
 
@@ -204,7 +205,7 @@ function collectNestedModels(model: Models): [string, Models][] {
   }
 }
 
-function generatePaths(flatRoutes: FlatRoute[], registry: SchemaRegistry): PathsObject {
+function generatePaths(flatRoutes: FlatRoute[], registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): PathsObject {
   return flatRoutes.reduce<Record<string, PathItemObject>>((paths, { route, group, fullPath }) => {
     const existing = paths[fullPath] ?? {}
     const method = route.method.toLowerCase() as keyof PathItemObject
@@ -213,13 +214,13 @@ function generatePaths(flatRoutes: FlatRoute[], registry: SchemaRegistry): Paths
       ...paths,
       [fullPath]: {
         ...existing,
-        [method]: generateOperation(route, group, registry),
+        [method]: generateOperation(route, group, registry, toJsonSchema),
       },
     }
   }, {} as Record<string, PathItemObject>)
 }
 
-function generateOperation(route: AnyRouteModel, group: string, registry: SchemaRegistry): OperationObject {
+function generateOperation(route: AnyRouteModel, group: string, registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): OperationObject {
   const tags = route.tags?.includes(group)
     ? route.tags
     : [...(route.tags ?? []), group]
@@ -228,18 +229,19 @@ function generateOperation(route: AnyRouteModel, group: string, registry: Schema
     summary: route.summary,
     description: route.description,
     tags,
-    parameters: generateParameters(route, registry),
-    requestBody: generateRequestBody(route, registry),
-    responses: generateResponses(route.responses, registry),
+    parameters: generateParameters(route, registry, toJsonSchema),
+    requestBody: generateRequestBody(route, registry, toJsonSchema),
+    responses: generateResponses(route.responses, registry, toJsonSchema),
   }
 }
 
 function generateParameters(
   route: AnyRouteModel,
   registry: SchemaRegistry,
+  toJsonSchema?: ToJsonSchema,
 ): ParameterObject[] | undefined {
   const pathParams = Object.entries(route.variables ?? {}).map(([name, model]) =>
-    generateParameter(name, model, "path", true, registry),
+    generateParameter(name, model, "path", true, registry, toJsonSchema),
   )
 
   const queries = route.queries
@@ -247,13 +249,13 @@ function generateParameters(
 
   const queryParams = queries
     ? Object.entries(queries.properties).map(([name, model]) =>
-        generateParameter(name, model, "query", queries.required.includes(name as any), registry),
+        generateParameter(name, model, "query", queries.required.includes(name as any), registry, toJsonSchema),
       )
     : []
 
   const headerParams = headers
     ? Object.entries(headers.properties).map(([name, model]) =>
-        generateParameter(name, model, "header", headers.required.includes(name as any), registry),
+        generateParameter(name, model, "header", headers.required.includes(name as any), registry, toJsonSchema),
       )
     : []
 
@@ -268,18 +270,20 @@ function generateParameter(
   location: "path" | "query" | "header" | "cookie",
   required: boolean,
   registry: SchemaRegistry,
+  toJsonSchema?: ToJsonSchema,
 ): ParameterObject {
   return {
     name,
     in: location,
     required,
-    schema: getSchema(model, registry),
+    schema: getSchema(model, registry, toJsonSchema),
   }
 }
 
 function generateRequestBody(
   route: AnyRouteModel,
   registry: SchemaRegistry,
+  toJsonSchema?: ToJsonSchema,
 ): RequestBodyObject | undefined {
   if (route.body == null || route.body.kind === "null") return undefined
 
@@ -287,39 +291,40 @@ function generateRequestBody(
 
   return {
     content: {
-      [contentType]: generateMediaType(route.body, registry),
+      [contentType]: generateMediaType(route.body, registry, toJsonSchema),
     },
   }
 }
 
-function generateMediaType(model: Models, registry: SchemaRegistry): MediaTypeObject {
+function generateMediaType(model: Models, registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): MediaTypeObject {
   return {
-    schema: getSchema(model, registry),
+    schema: getSchema(model, registry, toJsonSchema),
   }
 }
 
 function generateResponses(
   responses: Record<number, AnyResponseModel>,
   registry: SchemaRegistry,
+  toJsonSchema?: ToJsonSchema,
 ): Record<string, ResponseObject> {
   return Object.entries(responses).reduce<Record<string, ResponseObject>>(
     (acc, [status, response]) => ({
       ...acc,
-      [status]: generateResponseObject(response, registry),
+      [status]: generateResponseObject(response, registry, toJsonSchema),
     }),
     {} as Record<string, ResponseObject>,
   )
 }
 
-function generateResponseObject(response: AnyResponseModel, registry: SchemaRegistry): ResponseObject {
+function generateResponseObject(response: AnyResponseModel, registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): ResponseObject {
   const description = response.summary ?? ""
 
   const headers =
     response.kind !== "binary" && response.headers
-      ? generateResponseHeaders(response.headers, registry)
+      ? generateResponseHeaders(response.headers, registry, toJsonSchema)
       : undefined
 
-  const content = generateResponseContent(response, registry)
+  const content = generateResponseContent(response, registry, toJsonSchema)
 
   return {
     description,
@@ -331,11 +336,12 @@ function generateResponseObject(response: AnyResponseModel, registry: SchemaRegi
 function generateResponseHeaders(
   headers: RecordModel<Record<string, Models>, string>,
   registry: SchemaRegistry,
+  toJsonSchema?: ToJsonSchema,
 ): Record<string, { schema: JsonSchema }> {
   return Object.entries(headers.properties).reduce<Record<string, { schema: JsonSchema }>>(
     (acc, [name, model]) => ({
       ...acc,
-      [name]: { schema: getSchema(model, registry) },
+      [name]: { schema: getSchema(model, registry, toJsonSchema) },
     }),
     {} as Record<string, { schema: JsonSchema }>,
   )
@@ -344,6 +350,7 @@ function generateResponseHeaders(
 function generateResponseContent(
   response: AnyResponseModel,
   registry: SchemaRegistry,
+  toJsonSchema?: ToJsonSchema,
 ): Record<string, MediaTypeObject> | undefined {
   switch (response.kind) {
     case "json-response": {
@@ -351,7 +358,7 @@ function generateResponseContent(
 
       const contentType = response.contentType ?? "application/json"
 
-      const mediaType: MediaTypeObject = { schema: getSchema(response.body, registry) }
+      const mediaType: MediaTypeObject = { schema: getSchema(response.body, registry, toJsonSchema) }
 
       return { [contentType]: mediaType }
     }
@@ -363,7 +370,7 @@ function generateResponseContent(
 
       const mediaType: MediaTypeObject = {
         schema: { type: "string", format: "binary" },
-        itemSchema: getSchema(response.body, registry),
+        itemSchema: getSchema(response.body, registry, toJsonSchema),
       }
 
       return { [contentType]: mediaType }
@@ -373,7 +380,7 @@ function generateResponseContent(
       const contentType = response.contentType ?? "text/event-stream"
 
       const itemSchema: JsonSchema = response.body
-        ? getSchema(response.body, registry)
+        ? getSchema(response.body, registry, toJsonSchema)
         : { type: "string" }
 
       const mediaType: MediaTypeObject = {
@@ -393,9 +400,9 @@ function generateResponseContent(
   }
 }
 
-function getSchema(model: Models, registry: SchemaRegistry): JsonSchema {
+function getSchema(model: Models, registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): JsonSchema {
   const ref = registry.getRef(model)
-  return ref ? { $ref: ref } : buildJsonSchema({ model, registry }).jsonSchema
+  return ref ? { $ref: ref } : buildJsonSchema({ model, registry, toJsonSchema }).jsonSchema
 }
 
 // ---- security helpers ----

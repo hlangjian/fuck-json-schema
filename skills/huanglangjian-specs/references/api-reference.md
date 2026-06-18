@@ -49,18 +49,39 @@ interface GenerateOpenapiOptions {
     policy?: SecurityPolicyModel
     deployments?: Record<string, SecurityDeployment>  // keyed by component id
   }
+  toJsonSchema?: (type?: import("@standard-schema/spec").StandardTypedV1) => JsonSchemaObject
+                                         // library-specific adapter to extract schema metadata
 }
 ```
 
+When `toJsonSchema` is provided, it converts the `schema` (e.g. `z.int32().default(0)`) attached to each model into JSON Schema fields (`default`, `format`, `pattern`, `minimum`, etc.) that are merged into the output. Use a library-specific adapter:
+
+```ts
+// zod
+import { zodToJsonSchema } from "zod-to-json-schema"
+toJsonSchema: (schema) => zodToJsonSchema(schema as any)
+
+// valibot
+import { toJsonSchema as vbToJson } from "@valibot/to-json-schema"
+toJsonSchema: (schema) => vbToJson(schema as any)
+```
+
+Without `toJsonSchema`, only the model-level defaults (e.g. `int32({ default: 0 })`) appear in the output; Zod/Valibot schema metadata is ignored.
+
 Automatically collects all named models from route bodies/responses, generates `components/schemas`, path items, operations, parameters (path/query/header), request bodies, and responses. If `security.policy` is provided, generates `components/securitySchemes` and injects per-operation `security` requirements based on path pattern matching.
 
-## `generateJsonSchema(model)` → `JsonSchemaObject`
+## `generateJsonSchema(model, options?)` → `JsonSchemaObject`
 
 Generate a complete JSON Schema (Draft 2020-12) for the given model. Named sub-models (record, enums, union, taggedUnion with `id`) are automatically discovered and placed in `$defs`.
 
 ```ts
 const schema = generateJsonSchema(ServerConfig)
 // → { $schema: "...", type: "object", properties: { database: { $ref: "#/$defs/DatabaseConfig" } }, $defs: { PostgresConfig: {...}, ... } }
+
+// With toJsonSchema adapter to extract field-level metadata
+const schema = generateJsonSchema(ServerConfig, {
+  toJsonSchema: (schema) => zodToJsonSchema(schema as any),
+})
 ```
 
 ## Registry factories

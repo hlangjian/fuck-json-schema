@@ -305,7 +305,12 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
   }
 }
 
-export function createJsonSchemaRegistry(models?: Map<Models, { id: string; schema: JsonSchema }>): SchemaRegistry {
+export type ToJsonSchema = (type?: StandardTypedV1) => JsonSchemaObject
+
+export function createJsonSchemaRegistry(
+  models?: Map<Models, { id: string; schema: JsonSchema }>,
+  toJsonSchema?: ToJsonSchema,
+): SchemaRegistry {
   const map = new Map<Models, { id: string; schema: JsonSchema }>(models)
 
   const registry: SchemaRegistry = {
@@ -314,8 +319,8 @@ export function createJsonSchemaRegistry(models?: Map<Models, { id: string; sche
       return entry ? "#/$defs/" + entry.id : undefined
     },
     add(id, model) {
-      const { jsonSchema } = buildJsonSchema({ model, registry })
-      return createJsonSchemaRegistry(map.set(model, { id, schema: jsonSchema }))
+      const { jsonSchema } = buildJsonSchema({ model, registry, toJsonSchema })
+      return createJsonSchemaRegistry(map.set(model, { id, schema: jsonSchema }), toJsonSchema)
     },
     getDefs() {
       const defs: Record<string, JsonSchema> = {}
@@ -327,7 +332,10 @@ export function createJsonSchemaRegistry(models?: Map<Models, { id: string; sche
   return registry
 }
 
-export function createOpenapiSchemaRegistry(models?: Map<Models, { id: string; schema: JsonSchema }>): SchemaRegistry {
+export function createOpenapiSchemaRegistry(
+  models?: Map<Models, { id: string; schema: JsonSchema }>,
+  toJsonSchema?: ToJsonSchema,
+): SchemaRegistry {
   const map = new Map<Models, { id: string; schema: JsonSchema }>(models)
 
   const registry: SchemaRegistry = {
@@ -336,8 +344,8 @@ export function createOpenapiSchemaRegistry(models?: Map<Models, { id: string; s
       return entry ? "#/components/schemas/" + entry.id : undefined
     },
     add(id, model) {
-      const { jsonSchema } = buildJsonSchema({ model, registry })
-      return createOpenapiSchemaRegistry(map.set(model, { id, schema: jsonSchema }))
+      const { jsonSchema } = buildJsonSchema({ model, registry, toJsonSchema })
+      return createOpenapiSchemaRegistry(map.set(model, { id, schema: jsonSchema }), toJsonSchema)
     },
     getDefs() {
       const defs: Record<string, JsonSchema> = {}
@@ -385,13 +393,17 @@ function collectNamedModels(model: Models): Models[] {
  * generateJsonSchema(ServerConfig)
  * // → { $schema: "...", type: "object", properties: { database: { $ref: "#/$defs/DatabaseConfig" } }, $defs: {...} }
  */
-export function generateJsonSchema(model: Models): JsonSchemaObject {
+export function generateJsonSchema(
+  model: Models,
+  options?: { toJsonSchema?: ToJsonSchema },
+): JsonSchemaObject {
   const deps = collectNamedModels(model)
+  const toJsonSchema = options?.toJsonSchema
   const registry = deps.reduce(
     (reg, m) => reg.add((m as { id: string }).id, m),
-    createJsonSchemaRegistry(),
+    createJsonSchemaRegistry(undefined, toJsonSchema),
   )
-  const { jsonSchema } = buildJsonSchema({ model, registry })
+  const { jsonSchema } = buildJsonSchema({ model, registry, toJsonSchema })
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     ...(jsonSchema as Record<string, unknown>),
