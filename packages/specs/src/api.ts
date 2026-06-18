@@ -53,7 +53,7 @@ export interface RouteModel<
 > {
   kind: "route"
   method: HttpMethod
-  contentType?: string
+  contentType?: HttpContentType | (string & {})
   summary?: string
   description?: string
   path: Path
@@ -126,7 +126,7 @@ export function route<
 }
 
 export interface ResponseOptions<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>> {
-  contentType?: string
+  contentType?: HttpContentType | (string & {})
   summary?: string
   body?: Body
   headers?: Headers
@@ -208,6 +208,14 @@ export type BinaryLikeContentType =
   | "video/webm"
 
 export type FormLikeContentType = (string & {}) | "application/x-www-form-urlencoded" | "multipart/form-data"
+
+export type HttpContentType =
+  | JsonLikeContentType
+  | JsonStreamLikeContentType
+  | PlainTextLikeContentType
+  | PlainTextStreamLikeContentType
+  | BinaryLikeContentType
+  | FormLikeContentType
 
 export function routerModel(options: {
   name: string
