@@ -1,5 +1,21 @@
 # @huanglangjian/specs
 
+## 0.12.6
+
+### Patch Changes
+
+- a693eb0: feat: expose `toJsonSchema` option in `generateOpenapi` and `generateJsonSchema`
+
+  - Add `ToJsonSchema` type and export it publicly
+  - `generateOpenapi` options now accepts `toJsonSchema` to extract Zod/Valibot schema metadata (default, format, pattern, etc.) into OpenAPI output
+  - `generateJsonSchema` now accepts optional second parameter `{ toJsonSchema }`
+  - Thread `toJsonSchema` through all internal functions (`generatePaths`, `generateOperation`, `getSchema`, etc.)
+
+- a47c581: feat: auto-fill missing path variables with `string()` type in `route()` factory
+
+  - When `variables` is not specified, extract `{param}` names from the path template and default them to `string()`
+  - Ensures generated OpenAPI always includes path parameter definitions
+
 ## 0.12.5
 
 ### Patch Changes
