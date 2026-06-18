@@ -6,7 +6,7 @@ export interface BasicModel<T> {
   description?: string
   deprecated?: boolean
   examples?: T[]
-  schema?: StandardTypedV1<T, T>
+  schema?: StandardTypedV1<unknown, T>
   default?: T
 }
 
