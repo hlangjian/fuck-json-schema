@@ -1,5 +1,13 @@
 # @huanglangjian/specs
 
+## 0.12.3
+
+### Patch Changes
+
+- 1a4e5be: feat: make response factory functions options parameter optional
+
+  - `json()`, `jsonStream()`, `sseStream()`, `binary()` now accept optional options
+
 ## 0.12.2
 
 ### Patch Changes
