@@ -10,8 +10,10 @@ import {
   type RecordModel,
   type StringModel,
   type UuidModel,
+  string,
 } from "./types"
 import type { ExtractPathParams } from "./utils"
+import { extractPathParams } from "./utils"
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "OPTIONS" | "HEAD" | "TRACE"
 
@@ -122,7 +124,13 @@ export function route<
 >(
   options: RouteOptions<Path, Variables, Body, Queries, Headers, Responses>,
 ): RouteModel<Path, Variables, Body, Queries, Headers, Responses> {
-  return { kind: "route", ...options } as RouteModel<Path, Variables, Body, Queries, Headers, Responses>
+  const variables =
+    options.variables ??
+    (Object.fromEntries(
+      extractPathParams(options.path).map((name) => [name, string()]),
+    ) as Variables)
+
+  return { kind: "route", ...options, variables } as RouteModel<Path, Variables, Body, Queries, Headers, Responses>
 }
 
 export interface ResponseOptions<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>> {
