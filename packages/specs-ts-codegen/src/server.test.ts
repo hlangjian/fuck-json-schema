@@ -66,8 +66,9 @@ const warehouses = router({
 const ServerConfig = record({
   id: "ServerConfig",
   properties: {
-    port: int32(),
-    host: string(),
+    port: int32({ default: 8080 }),
+    host: string({ default: "0.0.0.0" }),
+    logLevel: enums({ id: "LogLevel", variants: { debug: "debug", info: "info" }, default: "info" }),
     tags: array({ base: string() }),
     allowedPorts: set({ base: int32() }),
     database: taggedUnion({
@@ -86,6 +87,7 @@ const ServerConfig = record({
       },
     }),
   },
+  optional: ["logLevel", "tags", "allowedPorts", "cache"],
 })
 
 describe("generateTsServer config import path", () => {
@@ -178,5 +180,57 @@ describe("generateTsServer unused handler parameters", () => {
 
     const opFile = files["warehouses/createWarehouse.ts"]
     expect(opFile).toContain("async (request: Request, _params?: Record<string, string>)")
+  })
+})
+
+describe("generateTsServer config env default/optional", () => {
+  it("emits .default() for required fields with a default (no .optional())", () => {
+    const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
+
+    expect(config).toContain("PORT: z.coerce.number().int().default(8080),")
+    expect(config).toContain('HOST: z.string().default("0.0.0.0"),')
+  })
+
+  it("emits .default().optional() for optional fields with a default", () => {
+    const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
+
+    expect(config).toContain('LOG_LEVEL: z.enum(["debug","info"]).default("info").optional(),')
+  })
+
+  it("emits .optional() for optional fields without a default", () => {
+    const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
+
+    expect(config).toMatch(/TAGS: .*\.optional\(\),/)
+    expect(config).not.toMatch(/TAGS: [^\n]*\.default\(/)
+  })
+
+  it("stringifies env defaults for valibot (input-typed)", () => {
+    const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig, validationLib: "valibot" })[
+      "config.ts"
+    ]
+
+    expect(config).toContain('PORT: v.optional(v.pipe(v.string(), v.toNumber(), v.integer()), "8080"),')
+  })
+})
+
+describe("generateTsServer taggedUnion discriminator env var", () => {
+  it("names the discriminator env var after the union discriminator, not the field", () => {
+    const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
+
+    expect(config).toContain('DATABASE_TYPE: z.enum(["postgres","sqlite"]),')
+    expect(config).toContain("resolveDatabase(env, e.DATABASE_TYPE)")
+    expect(config).not.toMatch(/\n {2}DATABASE: z\.enum/)
+  })
+})
+
+describe("generateTsServer path-variable handler null guard", () => {
+  it("guards URLPattern.exec and returns 404 instead of asserting non-null", () => {
+    const opFile = generateTsServer({ routers: [warehouses], configuration: ServerConfig })[
+      "warehouses/getWarehouse.ts"
+    ]
+
+    expect(opFile).toContain("const match = getWarehousePattern.exec(request.url)")
+    expect(opFile).toContain("if (!params && !match) return new Response(null, { status: 404 })")
+    expect(opFile).not.toContain(".exec(request.url)!")
   })
 })

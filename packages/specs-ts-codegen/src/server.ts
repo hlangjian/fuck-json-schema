@@ -134,7 +134,7 @@ function generateOpFile(
   if (hasQuery) {
     const fields = Object.entries(operation.queries).map(([key, query]) => {
       const expr = toSchema(query.model, schemaMap, lib)
-      const finalExpr = query.required ? expr : lib.optional(expr, modelDefault(query.model))
+      const finalExpr = lib.field(expr, { optional: !query.required, defaultValue: modelDefault(query.model) })
       return `  ${key}: ${finalExpr},`
     })
     lines.push(`const ${operationName}Query = ${lib.ns}.object({`)
@@ -145,7 +145,7 @@ function generateOpFile(
   if (hasHeaders) {
     const fields = Object.entries(operation.headers).map(([key, header]) => {
       const expr = toSchema(header.model, schemaMap, lib)
-      const finalExpr = header.required ? expr : lib.optional(expr, modelDefault(header.model))
+      const finalExpr = lib.field(expr, { optional: !header.required, defaultValue: modelDefault(header.model) })
       return `  "${key}": ${finalExpr},`
     })
     lines.push(`const ${operationName}Headers = ${lib.ns}.object({`)
@@ -264,9 +264,9 @@ function generateOpFile(
     lines.push(`      const requestUrl = new URL(request.url)`)
   }
   if (hasParams) {
-    lines.push(
-      `      const p = ${lib.parse(`${operationName}Params`, `params ?? ${operationName}Pattern.exec(request.url)!.pathname.groups`)}`,
-    )
+    lines.push(`      const match = ${operationName}Pattern.exec(request.url)`)
+    lines.push(`      if (!params && !match) return new Response(null, { status: 404 })`)
+    lines.push(`      const p = ${lib.parse(`${operationName}Params`, `params ?? match!.pathname.groups`)}`)
     requestArgs.push("params: p")
   }
   if (hasQuery) {
@@ -559,6 +559,7 @@ function collectLevel(
 
   for (const [propName, model] of Object.entries(properties)) {
     const envPrefix = prefix ? `${prefix}_${snakeCase(propName).toUpperCase()}` : snakeCase(propName).toUpperCase()
+    const optional = !required.includes(propName)
 
     switch (model.kind) {
       case "int32":
@@ -572,12 +573,24 @@ function collectLevel(
       case "uuid":
       case "literal":
       case "null":
-        envVars.push({ envName: envPrefix, schemaExpr: toSchemaEnv(model as Models, {} as SchemaMap, lib) })
+        envVars.push({
+          envName: envPrefix,
+          schemaExpr: lib.field(toSchemaEnv(model as Models, {} as SchemaMap, lib), {
+            optional,
+            defaultValue: modelDefault(model as Models),
+          }),
+        })
         fields.push({ name: propName, kind: "env", envName: envPrefix })
         break
 
       case "enums":
-        envVars.push({ envName: envPrefix, schemaExpr: toSchemaEnv(model as Models, {} as SchemaMap, lib) })
+        envVars.push({
+          envName: envPrefix,
+          schemaExpr: lib.field(toSchemaEnv(model as Models, {} as SchemaMap, lib), {
+            optional,
+            defaultValue: modelDefault(model as Models),
+          }),
+        })
         fields.push({ name: propName, kind: "env", envName: envPrefix })
         break
 
@@ -592,8 +605,9 @@ function collectLevel(
       }
 
       case "taggedUnion": {
+        const discEnvName = `${envPrefix}_${snakeCase(model.discriminator as string).toUpperCase()}`
         const discSchema = lib.enums(Object.keys(model.variants))
-        envVars.push({ envName: envPrefix, schemaExpr: discSchema })
+        envVars.push({ envName: discEnvName, schemaExpr: discSchema })
 
         const resolveFnName = `resolve${pascalCase(propName)}`
 
@@ -618,12 +632,12 @@ function collectLevel(
 
         taggedSwitches.push({
           resolveFnName,
-          discEnvName: envPrefix,
+          discEnvName,
           discSchemaExpr: discSchema,
           discriminator: model.discriminator as string,
           variants,
         })
-        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName, discEnvName: envPrefix })
+        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName, discEnvName })
         break
       }
 
@@ -659,7 +673,13 @@ function collectLevel(
             `unsupported configuration value of kind ${model.kind}<non-simple>, only simple element types are allowed`,
           )
         }
-        envVars.push({ envName: envPrefix, schemaExpr: toSchemaEnv(model, {} as SchemaMap, lib) })
+        envVars.push({
+          envName: envPrefix,
+          schemaExpr: lib.field(toSchemaEnv(model, {} as SchemaMap, lib), {
+            optional,
+            defaultValue: modelDefault(model),
+          }),
+        })
         fields.push({ name: propName, kind: "env", envName: envPrefix })
         break
       }
@@ -668,7 +688,10 @@ function collectLevel(
         throw new Error("unsupported configuration value of kind map")
 
       default:
-        envVars.push({ envName: envPrefix, schemaExpr: lib.string() })
+        envVars.push({
+          envName: envPrefix,
+          schemaExpr: lib.field(lib.string(), { optional, defaultValue: modelDefault(model) }),
+        })
         fields.push({ name: propName, kind: "env", envName: envPrefix })
     }
   }

@@ -1,3 +1,8 @@
+export interface FieldOptions {
+  optional?: boolean
+  defaultValue?: unknown
+}
+
 export interface ValidationLib {
   name: string
   ns: string
@@ -23,7 +28,7 @@ export interface ValidationLib {
   union(members: string[]): string
   discriminatedUnion(key: string, members: string[]): string
 
-  optional(inner: string, defaultValue?: unknown): string
+  field(inner: string, opts?: FieldOptions): string
 
   parse(schemaExpr: string, dataExpr: string): string
   infer(schemaRefName: string): string
@@ -59,8 +64,12 @@ export const zodLib: ValidationLib = {
   union: (members) => `z.union([${members.join(", ")}])`,
   discriminatedUnion: (key, members) => `z.discriminatedUnion(${escape(key)}, [${members.join(", ")}])`,
 
-  optional: (inner, defaultValue) =>
-    defaultValue !== undefined ? `${inner}.optional().default(${escape(defaultValue)})` : `${inner}.optional()`,
+  field: (inner, opts = {}) => {
+    let s = inner
+    if (opts.defaultValue !== undefined) s += `.default(${escape(opts.defaultValue)})`
+    if (opts.optional) s += ".optional()"
+    return s
+  },
 
   parse: (schema, data) => `${schema}.parse(${data})`,
   infer: (ref) => `z.infer<typeof ${ref}>`,
@@ -94,8 +103,12 @@ export const valibotLib: ValidationLib = {
   union: (members) => `v.union([${members.join(", ")}])`,
   discriminatedUnion: (key, members) => `v.variant(${escape(key)}, [${members.join(", ")}])`,
 
-  optional: (inner, defaultValue) =>
-    defaultValue !== undefined ? `v.optional(${inner}, ${escape(defaultValue)})` : `v.optional(${inner})`,
+  field: (inner, opts = {}) =>
+    opts.defaultValue !== undefined
+      ? `v.optional(${inner}, ${escape(String(opts.defaultValue as string | number | boolean))})`
+      : opts.optional
+        ? `v.optional(${inner})`
+        : inner,
 
   parse: (schema, data) => `v.parse(${schema}, ${data})`,
   infer: (ref) => `v.InferOutput<typeof ${ref}>`,

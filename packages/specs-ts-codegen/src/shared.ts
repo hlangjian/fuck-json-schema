@@ -2,6 +2,7 @@ import type { Models } from "@huanglangjian/specs"
 import { topologicalSortSchemaMap } from "@huanglangjian/specs"
 import type { SchemaMap } from "@huanglangjian/specs"
 import { camelCase } from "text-case"
+
 import type { ValidationLib } from "./validation-lib"
 
 /**
@@ -58,7 +59,10 @@ function jsdocBlock(model: {
   return `/**\n * ${tags.join("\n * ")}\n */`
 }
 
-export function fieldJsdoc(field: { title?: string; description?: string; deprecated?: boolean; default?: unknown }, indent = ""): string | null {
+export function fieldJsdoc(
+  field: { title?: string; description?: string; deprecated?: boolean; default?: unknown },
+  indent = "",
+): string | null {
   const desc = field.description || field.title
   if (!desc && !field.deprecated && field.default === undefined) return null
   const parts: string[] = []
@@ -89,9 +93,10 @@ export function generateModels(
         lines.push(`export const ${schemaName} = ${lib.ns}.object({`)
         for (const [name, fieldModel] of Object.entries(m.properties)) {
           const expr = toSchema(fieldModel, schemaMap, lib)
-          const finalExpr = required.includes(name as any)
-            ? expr
-            : lib.optional(expr, modelDefault(fieldModel))
+          const finalExpr = lib.field(expr, {
+            optional: !required.includes(name as any),
+            defaultValue: modelDefault(fieldModel),
+          })
           lines.push(`  ${name}: ${finalExpr},`)
         }
         lines.push(`})`)

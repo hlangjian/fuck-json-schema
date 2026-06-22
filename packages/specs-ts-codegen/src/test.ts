@@ -107,9 +107,13 @@ const ServerConfig = record({
   title: "服务端配置",
   description: "服务端运行时配置",
   properties: {
-    port: int32({ description: "监听端口" }),
-    host: string({ description: "监听地址" }),
-    logLevel: enums({ id: "LogLevel", variants: { debug: "debug", info: "info", warn: "warn", error: "error" } }),
+    port: int32({ description: "监听端口", default: 8080 }),
+    host: string({ description: "监听地址", default: "0.0.0.0" }),
+    logLevel: enums({
+      id: "LogLevel",
+      variants: { debug: "debug", info: "info", warn: "warn", error: "error" },
+      default: "info",
+    }),
     tags: array({ base: string(), description: "标签列表" }),
     allowedPorts: set({ base: int32(), description: "允许的端口集合" }),
     database: taggedUnion({
