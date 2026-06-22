@@ -1,5 +1,6 @@
 import {
   array,
+  datetime,
   enums,
   int32,
   json,
@@ -26,7 +27,7 @@ const SortOrder = enums({
   variants: { asc: "asc", desc: "desc" },
 })
 
-const Warehouse = record({ id: "Warehouse", properties: { id: int32(), name: string() } })
+const Warehouse = record({ id: "Warehouse", properties: { id: int32(), name: string(), createdAt: datetime() } })
 const CreateWarehouse = record({ id: "CreateWarehouse", properties: { name: string() } })
 
 const warehouses = router({
@@ -53,6 +54,11 @@ const warehouses = router({
       path: "/warehouses",
       body: CreateWarehouse,
       responses: { 201: json({ body: Warehouse }) },
+    }),
+    ping: route({
+      method: "GET",
+      path: "/ping",
+      responses: { 200: json({}) },
     }),
   },
 })
@@ -146,5 +152,31 @@ describe("generateTsServer config env array/set schema", () => {
     expect(config).toContain("z.array(")
     expect(config).not.toContain("z.set(")
     expect(config).not.toContain("new Set(")
+  })
+})
+
+describe("generateTsServer models use non-deprecated zod string formats", () => {
+  it("emits z.iso.datetime() instead of the deprecated z.string().datetime()", () => {
+    const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
+
+    const models = files["models.ts"]
+    expect(models).toContain("z.iso.datetime()")
+    expect(models).not.toContain("z.string().datetime()")
+  })
+})
+
+describe("generateTsServer unused handler parameters", () => {
+  it("underscores request and params for no-argument operations", () => {
+    const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
+
+    const opFile = files["warehouses/ping.ts"]
+    expect(opFile).toContain("async (_request: Request, _params?: Record<string, string>)")
+  })
+
+  it("underscores only params for body-only operations", () => {
+    const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
+
+    const opFile = files["warehouses/createWarehouse.ts"]
+    expect(opFile).toContain("async (request: Request, _params?: Record<string, string>)")
   })
 })

@@ -58,6 +58,14 @@ describe("generateTsClient request field access nesting", () => {
     expect(opFile).toContain("req?.query")
     expect(opFile).not.toMatch(/encodeURIComponent\(req\.status\)/)
   })
+
+  it("iterates array query params instead of encoding the array directly", () => {
+    const files = generateTsClient({ routers: [warehouses] })
+
+    const opFile = files["warehouses/listWarehouses.ts"]
+    expect(opFile).toContain("for (const item of query.tags) parts.push(")
+    expect(opFile).not.toContain("encodeURIComponent(query.tags)")
+  })
 })
 
 describe("generateTsClient validation namespace import", () => {

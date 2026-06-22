@@ -201,8 +201,14 @@ function generateClientFn(
   if (hasQuery) {
     lines.push(`  const parts: string[] = []`)
     lines.push(`  const query = ${hasRequired ? "req.query" : "req?.query"}`)
-    for (const [n] of Object.entries(operation.queries)) {
-      lines.push(`  if (query?.${n} != null) parts.push("${n}=" + encodeURIComponent(query.${n}))`)
+    for (const [n, q] of Object.entries(operation.queries)) {
+      if (q.model.kind === "array" || q.model.kind === "set") {
+        lines.push(
+          `  if (query?.${n} != null) for (const item of query.${n}) parts.push("${n}=" + encodeURIComponent(item))`,
+        )
+      } else {
+        lines.push(`  if (query?.${n} != null) parts.push("${n}=" + encodeURIComponent(query.${n}))`)
+      }
     }
     lines.push(`  const qs = parts.length > 0 ? "?" + parts.join("&") : ""`)
     lines.push(`  const url = \`\${baseUrl}${pathExpr}\${qs}\``)

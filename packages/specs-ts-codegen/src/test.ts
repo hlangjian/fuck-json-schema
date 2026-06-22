@@ -222,8 +222,9 @@ const warehousesRouter = router({
         properties: {
           keyword: string({ description: "搜索关键词" }),
           type: WarehouseType,
+          tags: array({ base: string(), description: "标签过滤" }),
         },
-        optional: ["keyword", "type"],
+        optional: ["keyword", "type", "tags"],
       }),
       headers: record({
         id: "SearchHeaders",

@@ -248,11 +248,15 @@ function generateOpFile(
   }
 
   if (opDoc) lines.push(opDoc)
+  const requestParamName = hasBody || hasParams || hasQuery || hasHeaders ? "request" : "_request"
+  const paramsParamName = hasParams ? "params" : "_params"
   lines.push(`export function ${operationName}(handler: ${OperationName}Operation.Handler) {`)
   lines.push(`  return {`)
   lines.push(`    method: "${operation.method.toUpperCase()}",`)
   lines.push(`    path: "${toColonPath(operation.path)}",`)
-  lines.push(`    handler: async (request: Request, params?: Record<string, string>): Promise<Response> => {`)
+  lines.push(
+    `    handler: async (${requestParamName}: Request, ${paramsParamName}?: Record<string, string>): Promise<Response> => {`,
+  )
 
   const requestArgs: string[] = []
 
