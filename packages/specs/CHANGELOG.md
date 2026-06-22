@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.13.2
+
+### Patch Changes
+
+- 500876c: fix: change response status key type from `string` to `number` in RouteOptions and route()
+
 ## 0.13.1
 
 ### Patch Changes
