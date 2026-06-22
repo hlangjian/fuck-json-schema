@@ -112,7 +112,7 @@ export interface RouteOptions<
   Body extends Models,
   Queries extends RecordModel<Record<string, Models>, string>,
   Headers extends RecordModel<Record<string, Models>, string>,
-  Responses extends Record<string, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
+  Responses extends Record<number, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
 > extends Omit<RouteModel<string, Variables, Body, Queries, Headers, Responses>, "kind"> {}
 
 export function route<
@@ -121,7 +121,7 @@ export function route<
   Body extends Models,
   Queries extends RecordModel<Record<string, Models>, string>,
   Headers extends RecordModel<Record<string, Models>, string>,
-  Responses extends Record<string, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
+  Responses extends Record<number, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
 >(
   options: RouteOptions<Path, Variables, Body, Queries, Headers, Responses>,
 ): RouteModel<Path, Variables, Body, Queries, Headers, Responses> {

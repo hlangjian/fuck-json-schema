@@ -142,7 +142,7 @@ const router = router({
     summary: "获取仓库列表",
     description: "返回所有仓库的列表",
     responses: {
-      "200": json({ summary: "仓库列表", body: array({ base: Warehouse }) }),
+      200: json({ summary: "仓库列表", body: array({ base: Warehouse }) }),
     },
   }),
 
@@ -153,8 +153,8 @@ const router = router({
     description: "根据ID获取指定仓库",
     variables: { id: int32({ description: "仓库ID" }) },
     responses: {
-      "200": json({ summary: "仓库详情", body: Warehouse }),
-      "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+      200: json({ summary: "仓库详情", body: Warehouse }),
+      404: json({ summary: "仓库不存在", body: ErrorResponse }),
     },
   }),
 
@@ -165,8 +165,8 @@ const router = router({
     description: "创建一个新仓库",
     body: CreateWarehouse,
     responses: {
-      "201": json({ summary: "创建成功", body: Warehouse }),
-      "400": json({ summary: "请求参数错误", body: ErrorResponse }),
+      201: json({ summary: "创建成功", body: Warehouse }),
+      400: json({ summary: "请求参数错误", body: ErrorResponse }),
     },
   }),
 
@@ -178,8 +178,8 @@ const router = router({
     variables: { id: int32({ description: "仓库ID" }) },
     body: UpdateWarehouse,
     responses: {
-      "200": json({ summary: "更新成功", body: Warehouse }),
-      "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+      200: json({ summary: "更新成功", body: Warehouse }),
+      404: json({ summary: "仓库不存在", body: ErrorResponse }),
     },
   }),
 
@@ -190,8 +190,8 @@ const router = router({
     description: "删除指定仓库",
     variables: { id: int32({ description: "仓库ID" }) },
     responses: {
-      "204": json({ summary: "删除成功" }),
-      "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+      204: json({ summary: "删除成功" }),
+      404: json({ summary: "仓库不存在", body: ErrorResponse }),
     },
   }),
 
@@ -202,7 +202,7 @@ const router = router({
     description: "以二进制格式导出所有仓库数据",
     deprecated: true,
     responses: {
-      "200": binaryResponse({ summary: "导出文件" }),
+      200: binaryResponse({ summary: "导出文件" }),
     },
   }),
   searchWarehouses: route({
@@ -227,7 +227,7 @@ const router = router({
       optional: ["x-trace-id"],
     }),
     responses: {
-      "200": json({ summary: "搜索结果", body: array({ base: Warehouse }) }),
+      200: json({ summary: "搜索结果", body: array({ base: Warehouse }) }),
     },
   }),
   getOldWarehouse: route({
@@ -238,8 +238,8 @@ const router = router({
     deprecated: true,
     variables: { id: int32({ description: "仓库ID" }) },
     responses: {
-      "200": json({ summary: "旧仓库详情", body: OldWarehouse }),
-      "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+      200: json({ summary: "旧仓库详情", body: OldWarehouse }),
+      404: json({ summary: "仓库不存在", body: ErrorResponse }),
     },
   }),
   },

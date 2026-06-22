@@ -107,15 +107,15 @@ const router = router({
       method: "GET",
       path: "/warehouses",
       summary: "获取仓库列表",
-      responses: { "200": json({ summary: "仓库列表", body: array({ base: Warehouse }) }) },
+      responses: { 200: json({ summary: "仓库列表", body: array({ base: Warehouse }) }) },
     }),
     getWarehouse: route({
       method: "GET",
       path: "/warehouses/{id}",
       variables: { id: int32({ description: "仓库ID" }) },
       responses: {
-        "200": json({ summary: "仓库详情", body: Warehouse }),
-        "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+        200: json({ summary: "仓库详情", body: Warehouse }),
+        404: json({ summary: "仓库不存在", body: ErrorResponse }),
       },
     }),
     createWarehouse: route({
@@ -123,8 +123,8 @@ const router = router({
       path: "/warehouses",
       body: CreateWarehouse,
       responses: {
-        "201": json({ summary: "创建成功", body: Warehouse }),
-        "400": json({ summary: "请求参数错误", body: ErrorResponse }),
+        201: json({ summary: "创建成功", body: Warehouse }),
+        400: json({ summary: "请求参数错误", body: ErrorResponse }),
       },
     }),
     updateWarehouse: route({
@@ -133,8 +133,8 @@ const router = router({
       variables: { id: int32({ description: "仓库ID" }) },
       body: UpdateWarehouse,
       responses: {
-        "200": json({ summary: "更新成功", body: Warehouse }),
-        "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+        200: json({ summary: "更新成功", body: Warehouse }),
+        404: json({ summary: "仓库不存在", body: ErrorResponse }),
       },
     }),
     deleteWarehouse: route({
@@ -142,14 +142,14 @@ const router = router({
       path: "/warehouses/{id}",
       variables: { id: int32({ description: "仓库ID" }) },
       responses: {
-        "204": json({ summary: "删除成功" }),
-        "404": json({ summary: "仓库不存在", body: ErrorResponse }),
+        204: json({ summary: "删除成功" }),
+        404: json({ summary: "仓库不存在", body: ErrorResponse }),
       },
     }),
     exportWarehouses: route({
       method: "GET",
       path: "/warehouses/export",
-      responses: { "200": binaryResponse({ summary: "导出文件" }) },
+      responses: { 200: binaryResponse({ summary: "导出文件" }) },
     }),
   },
 })
