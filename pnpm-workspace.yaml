@@ -14,3 +14,4 @@ minimumReleaseAgeExclude:
   - '@turbo/windows-arm64@2.9.18'
   - '@types/node@25.9.3'
   - turbo@2.9.18
+  - es-toolkit@1.48.1

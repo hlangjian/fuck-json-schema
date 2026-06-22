@@ -425,7 +425,7 @@ function generateConfig(
   const configTypeName = identifier(config.id)
 
   out.push(lib.importStmt)
-  out.push(`import type { ${configTypeName} } from "../models"`)
+  out.push(`import type { ${configTypeName} } from "./models"`)
   out.push("")
 
   const schemaName = camelCase(config.id) + "Schema"

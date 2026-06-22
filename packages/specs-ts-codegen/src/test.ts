@@ -132,7 +132,7 @@ const ServerConfig = record({
   optional: ["logLevel", "tags", "allowedPorts", "cache"],
 })
 
-const router = router({
+const warehousesRouter = router({
   id: "Warehouses",
   description: "仓库管理 API 集合",
   routes: {
@@ -251,7 +251,7 @@ mkdirSync(outDir, { recursive: true })
 
 // 1. Server handler code
 const serverFiles = generateTsServer({
-  routers: [router],
+  routers: [warehousesRouter],
   configuration: ServerConfig,
 })
 const serverOutDir = resolve(outDir, "server-handlers")
@@ -266,7 +266,7 @@ console.log(`✅ server-handlers (${Object.keys(serverFiles).length} files)`)
 
 // 2. TypeScript client code
 const clientFiles = generateTsClient({
-  routers: [router],
+  routers: [warehousesRouter],
 })
 const clientOutDir = resolve(outDir, "api-client")
 rmSync(clientOutDir, { recursive: true, force: true })
@@ -280,7 +280,7 @@ console.log(`✅ api-client (${Object.keys(clientFiles).length} files)`)
 
 // 3. Valibot server handler code
 const vbServerFiles = generateTsServer({
-  routers: [router],
+  routers: [warehousesRouter],
   configuration: ServerConfig,
   validationLib: "valibot",
 })
@@ -296,7 +296,7 @@ console.log(`✅ server-handlers-valibot (${Object.keys(vbServerFiles).length} f
 
 // 4. Valibot client code
 const vbClientFiles = generateTsClient({
-  routers: [router],
+  routers: [warehousesRouter],
   validationLib: "valibot",
 })
 const vbClientOutDir = resolve(outDir, "api-client-valibot")
