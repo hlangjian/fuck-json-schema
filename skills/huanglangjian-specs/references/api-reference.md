@@ -11,7 +11,7 @@ route({
   queries?: RecordModel<...>,              // query parameters
   headers?: RecordModel<...>,              // request headers
   responses: Record<string, ResponseModel>,  // status code -> response
-  tags?: string[],                         // auto-populated from RouterModel.id, only set for extra tags
+  tags?: string[],                         // auto-populated from RouterModel.tag ?? RouterModel.id
   summary?: string,
   description?: string,
   contentType?: string,

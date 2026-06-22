@@ -69,11 +69,11 @@ function joinPath(basePath: string, routePath: string): string {
 export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenapiResult {
   const { info, servers, routers, security, toJsonSchema } = options
 
-  const flatRoutes: FlatRoute[] = routers.flatMap((rm) =>
-    Object.entries(rm.routes).map(([_key, route]) => ({
+  const flatRoutes: FlatRoute[] = routers.flatMap((router) =>
+    Object.entries(router.routes).map(([_key, route]) => ({
       route,
-      group: rm.id,
-      fullPath: joinPath(rm.basePath ?? "", route.path),
+      group: router.tag ?? router.id,
+      fullPath: joinPath(router.basePath ?? "", route.path),
     })),
   )
 
@@ -94,11 +94,11 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
 
   const hasSchemas = Object.keys(schemas).length > 0
 
-  const tags = routers.reduce<TagObject[]>((acc, rm) => {
-    const tagName = rm.tag ?? rm.id
+  const tags = routers.reduce<TagObject[]>((acc, router) => {
+    const tagName = router.tag ?? router.id
     if (!acc.some((t) => t.name === tagName)) {
       const tag: TagObject = { name: tagName }
-      if (rm.description) tag.description = rm.description
+      if (router.description) tag.description = router.description
       acc.push(tag)
     }
     return acc

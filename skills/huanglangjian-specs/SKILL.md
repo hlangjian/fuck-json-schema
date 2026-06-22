@@ -1,40 +1,24 @@
 ---
 name: huanglangjian-specs
-description: "Type-safe API specification toolkit — define models, routes, security; generate OpenAPI 3.2 and JSON Schema 2020-12."
+description: "Define API models, routes, and security; generate OpenAPI 3.2 and JSON Schema 2020-12."
 ---
 
 # @huanglangjian/specs
 
-Define HTTP APIs declaratively with composable type models. Generates OpenAPI 3.2 documents, JSON Schema (Draft 2020-12), and a shared codegen IR for building code generators.
+## Workflow
 
-## When to use
+1. Check [Model kinds](./references/model-kinds.md) for available types and factory signatures.
+2. Define data models with factory functions (`record`, `enums`, `union`, `taggedUnion`, etc.).
+3. Group routes with `router({ id, routes, tag?, basePath?, description? })`.
+4. Call `generateOpenapi()` or `generateJsonSchema()` to produce output.
+5. Use `collectNamedModels()` / `collectOperations()` / `collectSchemaMap()` for custom codegen.
 
-- Define API models or routes using `@huanglangjian/specs`
-- Generate OpenAPI specification documents
-- Generate JSON Schema files
-- Work with security schemes (API Key, OpenID Connect)
-- Build code generators using the shared IR (OperationDescriptor, SchemaMap, collect*)
-- Any task involving `@huanglangjian/specs` or this monorepo
+## Key constraints
 
-## Installation
-
-```bash
-pnpm add @huanglangjian/specs
-```
-
-ESM-only. All exports re-exported from the barrel index.
-
-## Core concepts
-
-Three layers: **Models** → **Routes** → **Generators**.
-
-All models have typed factory functions. When unclear about options or signatures, consult the source files directly — `types.ts` and `api.ts` are the single source of truth (see [Source map](./references/source-map.md)).
-
-Key factories: `int32`, `string`, `boolean`, `datetime`, `record`, `enums`, `union`, `taggedUnion`, `literal`, `nullLike`, `array`, `set`, `map`, `route`, `json`, `binary`, `sseStream`, `jsonStream`, `router`.
-
-`record`, `enums`, `union`, `taggedUnion` require an `id` — they become named schemas in `#/components/schemas` or `#/$defs`.
-
-`router({ id, routes, tag?, basePath?, description? })` groups routes. `id` is automatically used as the OpenAPI tag for every operation unless `tag` is specified — do **not** set `tags` on individual routes unless you need additional tags.
+- `record`, `enums`, `union`, `taggedUnion` must have an `id` — they become named schemas.
+- `router` generates an OpenAPI tag from `tag ?? id`. Do NOT set `tags` on individual routes unless extra tags are needed.
+- Never write raw `{ kind: "..." }` objects — always use factory functions.
+- Refer to source files (`types.ts`, `api.ts`) for definitive signatures.
 
 ## References
 

@@ -1,39 +1,24 @@
 ---
 name: huanglangjian-specs-ts-codegen
-description: "TypeScript code generator for @huanglangjian/specs — server handler stubs, fetch-based client SDKs, schema-validated route wrappers (Zod or Valibot)."
+description: "Generate TypeScript server stubs and fetch-based client SDKs from @huanglangjian/specs route definitions."
 ---
 
 # @huanglangjian/specs-ts-codegen
 
-Generates framework-agnostic TypeScript server handler stubs and fetch-based client SDKs from `@huanglangjian/specs` API definitions.
+Generates framework-agnostic server handlers and fetch-based clients in TypeScript. Supports Zod (default) and Valibot validation.
 
-## When to use
+## Workflow
 
-- Generate server handler code from `@huanglangjian/specs` route definitions
-- Generate TypeScript fetch-based client SDKs
-- Generate schema-validated route wrappers (`(Request, params?) => Response`)
-- Work with the `@huanglangjian/specs-ts-codegen` package
+1. Define routes with `@huanglangjian/specs` → produce `RouterModel[]`.
+2. Call `generateTsServer({ routers, configuration?, validationLib? })` for server stubs.
+3. Call `generateTsClient({ routers, validationLib? })` for client SDK.
+4. Wire generated `{ method, path, handler }` objects into any framework (Hono, Bun, Deno).
 
-## Installation
+## Key constraints
 
-```bash
-pnpm add @huanglangjian/specs-ts-codegen
-```
-
-Requires `@huanglangjian/specs` as a peer dependency.
-
-## Core concepts
-
-Two generators:
-
-**`generateTsServer(options)`** — server handler stubs. Outputs per-operation files with schema validation (Zod by default, Valibot optional), URLPattern precompilation, and `{group}Handlers` interfaces + `create{group}Router()` factory functions. Optional `configuration` field generates `config.ts` with env-var schema parsing and config type in `models.ts`.
-
-**`generateTsClient(options)`** — fetch-based client SDK. Outputs per-operation async functions with schema-validated responses and group-based barrel re-exports.
-
-Handler signature uses standard Web APIs:
-```
-(request: Request, params?: Record<string, string>) => Promise<Response>
-```
+- Handler signature: `(request: Request, params?: Record<string, string>) => Promise<Response>`.
+- `configuration` generates `config.ts` with env-var schema parsing.
+- Extra named models not referenced by routes: pass via `models` option.
 
 ## References
 

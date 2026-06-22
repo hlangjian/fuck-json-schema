@@ -108,10 +108,10 @@ function joinPath(basePath: string, routePath: string): string {
 }
 
 export function collectOperations(routers: RouterModel[]): OperationDescriptor[] {
-  return routers.flatMap((routerModel) => {
-    const basePath = routerModel.basePath ?? ""
+  return routers.flatMap((router) => {
+    const basePath = router.basePath ?? ""
 
-    return Object.entries(routerModel.routes).map(([id, route]) => {
+    return Object.entries(router.routes).map(([id, route]) => {
       const queries: Record<string, { model: Models; name: string; required: boolean }> = {}
       if (route.queries) {
         for (const [name, propModel] of Object.entries(route.queries.properties)) {
@@ -151,8 +151,8 @@ export function collectOperations(routers: RouterModel[]): OperationDescriptor[]
 
       return {
         id,
-        group: routerModel.id,
-        groupDescription: routerModel.description,
+        group: router.id,
+        groupDescription: router.description,
         method: route.method,
         path: joinPath(basePath, route.path),
         summary: route.summary,
