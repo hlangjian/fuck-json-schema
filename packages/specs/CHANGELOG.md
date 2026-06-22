@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.13.1
+
+### Patch Changes
+
+- d369146: fix: operations now use `router.tag ?? router.id` for OpenAPI tag, not always `id`
+
 ## 0.13.0
 
 ### Minor Changes
