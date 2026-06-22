@@ -1,5 +1,14 @@
 # @huanglangjian/specs-ts-codegen
 
+## 0.12.9
+
+### Patch Changes
+
+- 7d28b42: fix: root-level `config.ts` now imports models from `./models` instead of `../models`
+
+  The generated `config.ts` lives at the output root next to `models.ts`, so its
+  import path must be `./models`. Operation files in subdirectories keep `../models`.
+
 ## 0.12.8
 
 ### Patch Changes
