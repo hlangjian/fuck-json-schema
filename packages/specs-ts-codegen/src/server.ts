@@ -4,8 +4,18 @@ import type { OperationDescriptor, SchemaMap } from "@huanglangjian/specs"
 import { groupBy } from "@huanglangjian/specs"
 import { camelCase, pascalCase, snakeCase } from "text-case"
 
+import {
+  generateModels,
+  toSchema,
+  toSchemaEnv,
+  toTs,
+  toColonPath,
+  contentTypeForKind,
+  modelDefault,
+  fieldJsdoc,
+  addModelsToSchemaMap,
+} from "./shared"
 import { resolveLib, type ValidationLib } from "./validation-lib"
-import { generateModels, toSchema, toSchemaEnv, toTs, toColonPath, contentTypeForKind, modelDefault, fieldJsdoc, addModelsToSchemaMap } from "./shared"
 
 export interface TsServerOptions {
   routers: RouterModel[]
@@ -76,11 +86,6 @@ function generateOpFile(
   const hasQuery = Object.keys(operation.queries).length > 0
   const hasHeaders = Object.keys(operation.headers).length > 0
 
-  const needsValidation = hasParams || hasQuery || hasHeaders
-  if (needsValidation) {
-    lines.push(lib.importStmt)
-  }
-
   const schemaImports: string[] = []
   if (hasBody && "id" in operation.requestModel!) {
     const root = resolveNamedRoot(operation.requestModel!)
@@ -90,8 +95,8 @@ function generateOpFile(
   }
 
   const typeImports: string[] = []
-  if (hasBody && "id" in operation.requestModel!) {
-    const root = resolveNamedRoot(operation.requestModel!)
+  const addNamedRef = (model: Models) => {
+    const root = resolveNamedRoot(model)
     if (root) {
       const typeName = identifier(root.id)
       if (schemaMap.has(root.id) && !typeImports.includes(typeName)) {
@@ -99,16 +104,13 @@ function generateOpFile(
       }
     }
   }
+  if (hasBody) addNamedRef(operation.requestModel!)
   for (const responseModel of Object.values(operation.responses)) {
-    if (responseModel == null) continue
-    const root = resolveNamedRoot(responseModel)
-    if (root) {
-      const typeName = identifier(root.id)
-      if (schemaMap.has(root.id) && !typeImports.includes(typeName)) {
-        typeImports.push(typeName)
-      }
-    }
+    if (responseModel != null) addNamedRef(responseModel)
   }
+  for (const v of Object.values(operation.pathVariables)) addNamedRef(v.model)
+  for (const v of Object.values(operation.queries)) addNamedRef(v.model)
+  for (const v of Object.values(operation.headers)) addNamedRef(v.model)
 
   if (typeImports.length > 0) {
     lines.push(`import type { ${typeImports.join(", ")} } from "../models"`)
@@ -181,7 +183,9 @@ function generateOpFile(
     for (const [key, header] of Object.entries(operation.headers)) {
       const doc = fieldJsdoc(header.model, "      ")
       if (doc) lines.push(doc)
-      lines.push(`      "${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)};`)
+      lines.push(
+        `      "${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)};`,
+      )
     }
     lines.push(`    };`)
   }
@@ -320,7 +324,11 @@ function generateOpFile(
   lines.push(`  }`)
   lines.push(`}`)
 
-  return lines.join("\n")
+  const body = lines.join("\n")
+  const usesNs = new RegExp(`(^|[^A-Za-z0-9_])${lib.ns}\\.`).test(body)
+  if (!usesNs) return body
+  const sep = body.startsWith("import ") ? "\n" : "\n\n"
+  return lib.importStmt + sep + body
 }
 
 function generateIndex(operations: OperationDescriptor[]): string {
@@ -502,6 +510,7 @@ function emitTaggedSwitch(sw: TaggedSwitchNode, out: string[], lib: ValidationLi
     out.push(`    case "${v.varName}": return ${v.resolveFnName}(env)`)
   }
   out.push(`  }`)
+  out.push(`  throw new Error(\`unknown variant: \${dv}\`)`)
   out.push(`}`)
   out.push("")
 }
@@ -517,6 +526,7 @@ function emitUnionSwitch(sw: UnionSwitchNode, out: string[], lib: ValidationLib)
     out.push(`    case "${v.varName}": return { type: "${v.varName}" as const, ...${v.resolveFnName}(env) }`)
   }
   out.push(`  }`)
+  out.push(`  throw new Error(\`unknown variant: \${dv}\`)`)
   out.push(`}`)
   out.push("")
 }
@@ -569,12 +579,7 @@ function collectLevel(
 
       case "record": {
         const rec = model as RecordModel<Record<string, Models>, string>
-        const child = collectLevel(
-          rec.properties as Record<string, Models>,
-          rec.required as string[],
-          envPrefix,
-          lib,
-        )
+        const child = collectLevel(rec.properties as Record<string, Models>, rec.required as string[], envPrefix, lib)
         envVars.push(...child.envVars)
         taggedSwitches.push(...child.taggedSwitches)
         unionSwitches.push(...child.unionSwitches)

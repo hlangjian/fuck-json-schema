@@ -4,8 +4,9 @@ import { fileURLToPath } from "node:url"
 
 import { binary as binaryResponse, json, route, router } from "@huanglangjian/specs"
 import { array, datetime, enums, int32, literal, record, set, string, taggedUnion, union } from "@huanglangjian/specs"
-import { generateTsServer } from "./server"
+
 import { generateTsClient } from "./client"
+import { generateTsServer } from "./server"
 
 const Warehouse = record({
   id: "Warehouse",
@@ -49,6 +50,12 @@ const ErrorResponse = record({
   properties: {
     message: string({ description: "错误信息" }),
   },
+})
+
+const WarehouseType = enums({
+  id: "WarehouseType",
+  title: "仓库类型",
+  variants: { cold: "cold", dry: "dry", hazmat: "hazmat" },
 })
 
 const OldWarehouse = record({
@@ -137,111 +144,111 @@ const warehousesRouter = router({
   description: "仓库管理 API 集合",
   routes: {
     listWarehouses: route({
-    method: "GET",
-    path: "/warehouses",
-    summary: "获取仓库列表",
-    description: "返回所有仓库的列表",
-    responses: {
-      200: json({ summary: "仓库列表", body: array({ base: Warehouse }) }),
-    },
-  }),
-
-  getWarehouse: route({
-    method: "GET",
-    path: "/warehouses/{id}",
-    summary: "获取单个仓库",
-    description: "根据ID获取指定仓库",
-    variables: { id: int32({ description: "仓库ID" }) },
-    responses: {
-      200: json({ summary: "仓库详情", body: Warehouse }),
-      404: json({ summary: "仓库不存在", body: ErrorResponse }),
-    },
-  }),
-
-  createWarehouse: route({
-    method: "POST",
-    path: "/warehouses",
-    summary: "创建仓库",
-    description: "创建一个新仓库",
-    body: CreateWarehouse,
-    responses: {
-      201: json({ summary: "创建成功", body: Warehouse }),
-      400: json({ summary: "请求参数错误", body: ErrorResponse }),
-    },
-  }),
-
-  updateWarehouse: route({
-    method: "PUT",
-    path: "/warehouses/{id}",
-    summary: "更新仓库",
-    description: "更新指定仓库的信息",
-    variables: { id: int32({ description: "仓库ID" }) },
-    body: UpdateWarehouse,
-    responses: {
-      200: json({ summary: "更新成功", body: Warehouse }),
-      404: json({ summary: "仓库不存在", body: ErrorResponse }),
-    },
-  }),
-
-  deleteWarehouse: route({
-    method: "DELETE",
-    path: "/warehouses/{id}",
-    summary: "删除仓库",
-    description: "删除指定仓库",
-    variables: { id: int32({ description: "仓库ID" }) },
-    responses: {
-      204: json({ summary: "删除成功" }),
-      404: json({ summary: "仓库不存在", body: ErrorResponse }),
-    },
-  }),
-
-  exportWarehouses: route({
-    method: "GET",
-    path: "/warehouses/export",
-    summary: "导出仓库数据",
-    description: "以二进制格式导出所有仓库数据",
-    deprecated: true,
-    responses: {
-      200: binaryResponse({ summary: "导出文件" }),
-    },
-  }),
-  searchWarehouses: route({
-    method: "GET",
-    path: "/warehouses/search",
-    summary: "搜索仓库",
-    description: "按条件搜索仓库列表",
-    queries: record({
-      id: "WarehouseQuery",
-      properties: {
-        keyword: string({ description: "搜索关键词" }),
-        type: string({ description: "仓库类型" }),
+      method: "GET",
+      path: "/warehouses",
+      summary: "获取仓库列表",
+      description: "返回所有仓库的列表",
+      responses: {
+        200: json({ summary: "仓库列表", body: array({ base: Warehouse }) }),
       },
-      optional: ["keyword", "type"],
     }),
-    headers: record({
-      id: "SearchHeaders",
-      properties: {
-        "x-trace-id": string({ description: "链路追踪ID" }),
-        "x-tenant-id": string({ description: "租户ID" }),
+
+    getWarehouse: route({
+      method: "GET",
+      path: "/warehouses/{id}",
+      summary: "获取单个仓库",
+      description: "根据ID获取指定仓库",
+      variables: { id: int32({ description: "仓库ID" }) },
+      responses: {
+        200: json({ summary: "仓库详情", body: Warehouse }),
+        404: json({ summary: "仓库不存在", body: ErrorResponse }),
       },
-      optional: ["x-trace-id"],
     }),
-    responses: {
-      200: json({ summary: "搜索结果", body: array({ base: Warehouse }) }),
-    },
-  }),
-  getOldWarehouse: route({
-    method: "GET",
-    path: "/warehouses/old/{id}",
-    summary: "获取旧仓库",
-    description: "根据ID获取旧仓库（已废弃）",
-    deprecated: true,
-    variables: { id: int32({ description: "仓库ID" }) },
-    responses: {
-      200: json({ summary: "旧仓库详情", body: OldWarehouse }),
-      404: json({ summary: "仓库不存在", body: ErrorResponse }),
-    },
-  }),
+
+    createWarehouse: route({
+      method: "POST",
+      path: "/warehouses",
+      summary: "创建仓库",
+      description: "创建一个新仓库",
+      body: CreateWarehouse,
+      responses: {
+        201: json({ summary: "创建成功", body: Warehouse }),
+        400: json({ summary: "请求参数错误", body: ErrorResponse }),
+      },
+    }),
+
+    updateWarehouse: route({
+      method: "PUT",
+      path: "/warehouses/{id}",
+      summary: "更新仓库",
+      description: "更新指定仓库的信息",
+      variables: { id: int32({ description: "仓库ID" }) },
+      body: UpdateWarehouse,
+      responses: {
+        200: json({ summary: "更新成功", body: Warehouse }),
+        404: json({ summary: "仓库不存在", body: ErrorResponse }),
+      },
+    }),
+
+    deleteWarehouse: route({
+      method: "DELETE",
+      path: "/warehouses/{id}",
+      summary: "删除仓库",
+      description: "删除指定仓库",
+      variables: { id: int32({ description: "仓库ID" }) },
+      responses: {
+        204: json({ summary: "删除成功" }),
+        404: json({ summary: "仓库不存在", body: ErrorResponse }),
+      },
+    }),
+
+    exportWarehouses: route({
+      method: "GET",
+      path: "/warehouses/export",
+      summary: "导出仓库数据",
+      description: "以二进制格式导出所有仓库数据",
+      deprecated: true,
+      responses: {
+        200: binaryResponse({ summary: "导出文件" }),
+      },
+    }),
+    searchWarehouses: route({
+      method: "GET",
+      path: "/warehouses/search",
+      summary: "搜索仓库",
+      description: "按条件搜索仓库列表",
+      queries: record({
+        id: "WarehouseQuery",
+        properties: {
+          keyword: string({ description: "搜索关键词" }),
+          type: WarehouseType,
+        },
+        optional: ["keyword", "type"],
+      }),
+      headers: record({
+        id: "SearchHeaders",
+        properties: {
+          "x-trace-id": string({ description: "链路追踪ID" }),
+          "x-tenant-id": string({ description: "租户ID" }),
+        },
+        optional: ["x-trace-id"],
+      }),
+      responses: {
+        200: json({ summary: "搜索结果", body: array({ base: Warehouse }) }),
+      },
+    }),
+    getOldWarehouse: route({
+      method: "GET",
+      path: "/warehouses/old/{id}",
+      summary: "获取旧仓库",
+      description: "根据ID获取旧仓库（已废弃）",
+      deprecated: true,
+      variables: { id: int32({ description: "仓库ID" }) },
+      responses: {
+        200: json({ summary: "旧仓库详情", body: OldWarehouse }),
+        404: json({ summary: "仓库不存在", body: ErrorResponse }),
+      },
+    }),
   },
 })
 

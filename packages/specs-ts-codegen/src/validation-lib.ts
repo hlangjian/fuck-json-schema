@@ -60,17 +60,13 @@ export const zodLib: ValidationLib = {
   discriminatedUnion: (key, members) => `z.discriminatedUnion(${escape(key)}, [${members.join(", ")}])`,
 
   optional: (inner, defaultValue) =>
-    defaultValue !== undefined
-      ? `${inner}.optional().default(${escape(defaultValue)})`
-      : `${inner}.optional()`,
+    defaultValue !== undefined ? `${inner}.optional().default(${escape(defaultValue)})` : `${inner}.optional()`,
 
   parse: (schema, data) => `${schema}.parse(${data})`,
   infer: (ref) => `z.infer<typeof ${ref}>`,
 
-  envArray: (inner) =>
-    `z.coerce.string().transform(s => s.split(',').filter(Boolean)).pipe(z.array(${inner}))`,
-  envSet: (inner) =>
-    `z.coerce.string().transform(s => new Set(s.split(',').filter(Boolean))).pipe(z.set(${inner}))`,
+  envArray: (inner) => `z.coerce.string().transform(s => z.array(${inner}).parse(s.split(',').filter(Boolean)))`,
+  envSet: (inner) => `z.coerce.string().transform(s => z.array(${inner}).parse(s.split(',').filter(Boolean)))`,
 }
 
 export const valibotLib: ValidationLib = {
@@ -99,17 +95,13 @@ export const valibotLib: ValidationLib = {
   discriminatedUnion: (key, members) => `v.variant(${escape(key)}, [${members.join(", ")}])`,
 
   optional: (inner, defaultValue) =>
-    defaultValue !== undefined
-      ? `v.optional(${inner}, ${escape(defaultValue)})`
-      : `v.optional(${inner})`,
+    defaultValue !== undefined ? `v.optional(${inner}, ${escape(defaultValue)})` : `v.optional(${inner})`,
 
   parse: (schema, data) => `v.parse(${schema}, ${data})`,
   infer: (ref) => `v.InferOutput<typeof ${ref}>`,
 
-  envArray: (inner) =>
-    `v.pipe(v.string(), v.transform(s => s.split(',').filter(Boolean)), v.array(${inner}))`,
-  envSet: (inner) =>
-    `v.pipe(v.string(), v.transform(s => new Set(s.split(',').filter(Boolean))), v.set(${inner}))`,
+  envArray: (inner) => `v.pipe(v.string(), v.transform(s => s.split(',').filter(Boolean)), v.array(${inner}))`,
+  envSet: (inner) => `v.pipe(v.string(), v.transform(s => s.split(',').filter(Boolean)), v.array(${inner}))`,
 }
 
 export function resolveLib(name: string): ValidationLib {

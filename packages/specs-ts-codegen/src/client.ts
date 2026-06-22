@@ -4,8 +4,8 @@ import type { OperationDescriptor, SchemaMap } from "@huanglangjian/specs"
 import { groupBy } from "@huanglangjian/specs"
 import { camelCase, pascalCase } from "text-case"
 
-import { resolveLib, type ValidationLib } from "./validation-lib"
 import { generateModels, toTs, resolveSchemaExpr, collectSchemaRefs, fieldJsdoc, addModelsToSchemaMap } from "./shared"
+import { resolveLib, type ValidationLib } from "./validation-lib"
 
 export interface TsClientOptions {
   routers: RouterModel[]
@@ -81,6 +81,9 @@ function generateClientFn(
   for (const responseModel of Object.values(operation.responses)) {
     if (responseModel != null) addNamedRef(responseModel)
   }
+  for (const v of Object.values(operation.pathVariables)) addNamedRef(v.model)
+  for (const v of Object.values(operation.queries)) addNamedRef(v.model)
+  for (const v of Object.values(operation.headers)) addNamedRef(v.model)
 
   const okStatus = Object.keys(operation.responses).find((s) => Number(s) >= 200 && Number(s) < 300)
   const okModel: Models | null = okStatus ? operation.responses[Number(okStatus)] : null
@@ -132,7 +135,9 @@ function generateClientFn(
     for (const [key, header] of Object.entries(operation.headers)) {
       const doc = fieldJsdoc(header.model, "      ")
       if (doc) lines.push(doc)
-      lines.push(`      "${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)};`)
+      lines.push(
+        `      "${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)};`,
+      )
     }
     lines.push(`    } & Record<string, string>;`)
   } else {
@@ -187,7 +192,7 @@ function generateClientFn(
 
   const retType = okModel && !isStreamLike ? toTs(okModel, schemaMap, identifier, namespace) : "Response"
 
-  const pathExpr = operation.path.replace(/\{(\w+)\}/g, (_, name) => `\${encodeURIComponent(req.${name})}`)
+  const pathExpr = operation.path.replace(/\{(\w+)\}/g, (_, name) => `\${encodeURIComponent(req.params.${name})}`)
 
   if (opDoc) lines.push(opDoc)
   lines.push(`export async function ${functionName}(${reqParam}): Promise<${retType}> {`)
@@ -195,12 +200,9 @@ function generateClientFn(
 
   if (hasQuery) {
     lines.push(`  const parts: string[] = []`)
-    for (const [n, q] of Object.entries(operation.queries)) {
-      if (q.required) {
-        lines.push(`  parts.push("${n}=" + encodeURIComponent(req.${n}))`)
-      } else {
-        lines.push(`  if (req?.${n} != null) parts.push("${n}=" + encodeURIComponent(req.${n}))`)
-      }
+    lines.push(`  const query = ${hasRequired ? "req.query" : "req?.query"}`)
+    for (const [n] of Object.entries(operation.queries)) {
+      lines.push(`  if (query?.${n} != null) parts.push("${n}=" + encodeURIComponent(query.${n}))`)
     }
     lines.push(`  const qs = parts.length > 0 ? "?" + parts.join("&") : ""`)
     lines.push(`  const url = \`\${baseUrl}${pathExpr}\${qs}\``)
@@ -231,7 +233,11 @@ function generateClientFn(
   }
   lines.push(`}`)
 
-  return lines.join("\n")
+  const body = lines.join("\n")
+  const usesNs = new RegExp(`(^|[^A-Za-z0-9_])${lib.ns}\\.`).test(body)
+  if (!usesNs) return body
+  const sep = body.startsWith("import ") ? "\n" : "\n\n"
+  return lib.importStmt + sep + body
 }
 
 function generateClientIndex(operations: OperationDescriptor[]): string {
