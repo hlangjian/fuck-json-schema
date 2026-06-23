@@ -68,7 +68,7 @@ import { toJsonSchema as vbToJson } from "@valibot/to-json-schema"
 toJsonSchema: (schema) => vbToJson(schema as any)
 ```
 
-Without `toJsonSchema`, only the model-level defaults (e.g. `int32({ default: 0 })`) appear in the output; Zod/Valibot schema metadata is ignored.
+Without `toJsonSchema`, no field-level metadata is emitted: only the structural shape (`type`, `format` from the model kind, `enum`, `$ref`, etc.) appears. The model-level `default` field is **not** folded into OpenAPI/JSON Schema at all — it is consumed only by `@huanglangjian/specs-ts-codegen`. A `default` reaches the OpenAPI/JSON Schema output only when it is carried on the model's `schema` (e.g. `z.string().default(...)`) and surfaced by the `toJsonSchema` adapter.
 
 Automatically collects all named models from route bodies/responses, generates `components/schemas`, path items, operations, parameters (path/query/header), request bodies, and responses. If `security.policy` is provided, generates `components/securitySchemes` and injects per-operation `security` requirements based on path pattern matching.
 

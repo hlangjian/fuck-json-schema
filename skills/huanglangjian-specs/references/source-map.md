@@ -3,7 +3,7 @@
 | File | Purpose |
 |---|---|
 | `src/index.ts` | Barrel re-exports |
-| `src/types.ts` | All model types (`Models` union) and 15 factory functions |
+| `src/types.ts` | All model types (`Models` union) and 18 factory functions |
 | `src/api.ts` | Route, response (json/binary/stream/sse), RouterModel, router(), HTTP method type |
 | `src/security.ts` | `apikey()`, `openIdConnect()`, `SecurityPolicyModel` |
 | `src/deployment.ts` | `deployOpenIdConnect()`, `OpenIdDeployment` |

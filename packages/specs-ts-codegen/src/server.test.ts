@@ -191,10 +191,11 @@ describe("generateTsServer config env default/optional", () => {
     expect(config).toContain('HOST: z.string().default("0.0.0.0"),')
   })
 
-  it("emits .default().optional() for optional fields with a default", () => {
+  it("collapses optional+default to .default() (no trailing .optional())", () => {
     const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
 
-    expect(config).toContain('LOG_LEVEL: z.enum(["debug","info"]).default("info").optional(),')
+    expect(config).toContain('LOG_LEVEL: z.enum(["debug","info"]).default("info"),')
+    expect(config).not.toContain('.default("info").optional()')
   })
 
   it("emits .optional() for optional fields without a default", () => {

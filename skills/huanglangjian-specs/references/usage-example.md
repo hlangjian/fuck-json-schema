@@ -100,7 +100,7 @@ const ServerConfig = record({
 })
 
 // 3. Define routes — use router() factory, no tags needed (auto from id)
-const router = router({
+const warehouseRouter = router({
   id: "Warehouses",
   routes: {
     listWarehouses: route({
@@ -174,7 +174,7 @@ const keycloakDeployment = deployOpenIdConnect({ component: keycloak, issuer: "h
 // 5. Generate OpenAPI spec
 const { openapi } = generateOpenapi({
   info: { title: "Warehouse API", version: "1.0.0" },
-  routers: [router],
+  routers: [warehouseRouter],
   security: { policy: securityPolicy, deployments: { keycloak: keycloakDeployment } },
   // Optional: library-specific adapter to extract Zod/Valibot schema metadata (default, format, etc.)
   toJsonSchema: (schema) => zodToJsonSchema(schema as any),

@@ -65,10 +65,9 @@ export const zodLib: ValidationLib = {
   discriminatedUnion: (key, members) => `z.discriminatedUnion(${escape(key)}, [${members.join(", ")}])`,
 
   field: (inner, opts = {}) => {
-    let s = inner
-    if (opts.defaultValue !== undefined) s += `.default(${escape(opts.defaultValue)})`
-    if (opts.optional) s += ".optional()"
-    return s
+    if (opts.defaultValue !== undefined) return `${inner}.default(${escape(opts.defaultValue)})`
+    if (opts.optional) return `${inner}.optional()`
+    return inner
   },
 
   parse: (schema, data) => `${schema}.parse(${data})`,
