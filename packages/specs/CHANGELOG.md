@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.13.3
+
+### Patch Changes
+
+- 37c133f: Fix OpenAPI/JSON Schema generation: nested named models wrapped in array/set/map now emit `$ref` instead of inlining. Registry uses model `id` string for lookup instead of object identity.
+
 ## 0.13.2
 
 ### Patch Changes
