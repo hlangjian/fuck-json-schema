@@ -10,6 +10,16 @@ const WarehouseStatus = enums({
 
 const Warehouse = record({ id: "Warehouse", properties: { id: int32(), name: string() } })
 
+const CreateWarehouse = record({
+  id: "CreateWarehouse",
+  properties: { name: string() },
+})
+
+const ErrorResponse = record({
+  id: "ErrorResponse",
+  properties: { message: string() },
+})
+
 const warehouses = router({
   id: "Warehouses",
   routes: {
@@ -28,6 +38,16 @@ const warehouses = router({
         optional: ["status", "tags"],
       }),
       responses: { 200: json({ body: array({ base: Warehouse }) }) },
+    }),
+    updateWarehouse: route({
+      method: "PUT",
+      path: "/warehouses/{id}",
+      variables: { id: int32() },
+      body: CreateWarehouse,
+      responses: {
+        200: json({ body: Warehouse }),
+        404: json({ body: ErrorResponse }),
+      },
     }),
   },
 })
@@ -82,5 +102,44 @@ describe("generateTsClient validation namespace import", () => {
 
     const opFile = files["warehouses/getWarehouse.ts"]
     expect(opFile).not.toContain(`import { z } from "zod"`)
+  })
+})
+
+describe("generateTsClient returns Response union type", () => {
+  it("uses Operation.Response as return type instead of extracted body type", () => {
+    const files = generateTsClient({ routers: [warehouses] })
+
+    const opFile = files["warehouses/updateWarehouse.ts"]
+    expect(opFile).toContain("Promise<UpdateWarehouseOperation.Response>")
+    expect(opFile).not.toMatch(/Promise<Warehouse>/)
+  })
+})
+
+describe("generateTsClient imports schemas for all response statuses", () => {
+  it("imports error response schemas alongside success schemas", () => {
+    const files = generateTsClient({ routers: [warehouses] })
+
+    const opFile = files["warehouses/updateWarehouse.ts"]
+    expect(opFile).toContain("warehouseSchema")
+    expect(opFile).toContain("errorResponseSchema")
+  })
+})
+
+describe("generateTsClient switch/case response handling", () => {
+  it("generates switch with as const on status literals", () => {
+    const files = generateTsClient({ routers: [warehouses] })
+
+    const opFile = files["warehouses/updateWarehouse.ts"]
+    expect(opFile).toContain("switch (res.status)")
+    expect(opFile).toContain("200 as const")
+    expect(opFile).toContain("404 as const")
+  })
+
+  it("throws Error in default case for unhandled statuses", () => {
+    const files = generateTsClient({ routers: [warehouses] })
+
+    const opFile = files["warehouses/updateWarehouse.ts"]
+    expect(opFile).toContain("throw new Error")
+    expect(opFile).toContain("default:")
   })
 })

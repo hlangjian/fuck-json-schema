@@ -85,15 +85,24 @@ function generateClientFn(
   for (const v of Object.values(operation.queries)) addNamedRef(v.model)
   for (const v of Object.values(operation.headers)) addNamedRef(v.model)
 
-  const okStatus = Object.keys(operation.responses).find((s) => Number(s) >= 200 && Number(s) < 300)
-  const okModel: Models | null = okStatus ? operation.responses[Number(okStatus)] : null
-  const okKind = okStatus ? (operation.responseKinds[Number(okStatus)] ?? "json-response") : "json-response"
-  const isStreamLike = okKind === "stream-response" || okKind === "sse-response" || okKind === "binary"
-  const okSchema = okModel ? resolveSchemaExpr(okModel, schemaMap, lib) : null
+  const responseEntries = Object.entries(operation.responses) as [string, Models | null][]
+  const responseKind = (status: string): string => operation.responseKinds[Number(status)] ?? "json-response"
+  const respInfo: { status: number; model: Models | null; kind: string; isStreamLike: boolean; schemaExpr: string | null }[] = []
+  for (const [s, model] of responseEntries) {
+    const status = Number(s)
+    const kind = responseKind(s)
+    const isStreamLike = kind === "stream-response" || kind === "sse-response" || kind === "binary"
+    const schemaExpr = model && !isStreamLike ? resolveSchemaExpr(model, schemaMap, lib) : null
+    respInfo.push({ status, model, kind, isStreamLike, schemaExpr })
+  }
 
   const schemaImports: string[] = []
-  if (okSchema && !isStreamLike) {
-    schemaImports.push(...collectSchemaRefs(okModel!, schemaMap))
+  for (const ri of respInfo) {
+    if (ri.model && !ri.isStreamLike) {
+      for (const r of collectSchemaRefs(ri.model, schemaMap)) {
+        if (!schemaImports.includes(r)) schemaImports.push(r)
+      }
+    }
   }
   if (typeImports.length > 0) {
     lines.push(`import type { ${typeImports.join(", ")} } from "../models"`)
@@ -152,8 +161,6 @@ function generateClientFn(
   lines.push(`  }`)
   lines.push("")
 
-  const responseEntries = Object.entries(operation.responses)
-  const responseKind = (status: string) => operation.responseKinds[Number(status)] ?? "json-response"
   const responseBodyField = (kind: string, responseModel: Models | null) => {
     if (responseModel == null) {
       if (kind === "binary") return "body: Blob"
@@ -190,7 +197,7 @@ function generateClientFn(
   const hasRequired = hasParams || hasBody
   const reqParam = hasRequired ? `req: ${OperationName}Operation.Request` : `req?: ${OperationName}Operation.Request`
 
-  const retType = okModel && !isStreamLike ? toTs(okModel, schemaMap, identifier, namespace) : "Response"
+  const retType = `${OperationName}Operation.Response`
 
   const pathExpr = operation.path.replace(/\{(\w+)\}/g, (_, name) => `\${encodeURIComponent(req.params.${name})}`)
 
@@ -226,17 +233,29 @@ function generateClientFn(
     lines.push(`    headers: req?.headers,`)
   }
   lines.push(`  })`)
-  lines.push(`  if (!res.ok) throw new Error(\`${operation.method} ${operation.path} failed: \${res.status}\`)`)
-
-  if (okModel && !isStreamLike) {
-    if (okSchema) {
-      lines.push(`  return ${lib.parse(okSchema, "await res.json()")}`)
+  lines.push(`  switch (res.status) {`)
+  for (const ri of respInfo) {
+    lines.push(`    case ${ri.status}: {`)
+    if (ri.isStreamLike) {
+      if (ri.kind === "binary") {
+        lines.push(`      return { status: ${ri.status} as const, body: await res.blob() }`)
+      } else if (ri.model) {
+        lines.push(`      return { status: ${ri.status} as const, stream: res.body! }`)
+      } else {
+        lines.push(`      return { status: ${ri.status} as const }`)
+      }
+    } else if (ri.model && ri.schemaExpr) {
+      lines.push(`      const body = ${lib.parse(ri.schemaExpr, "await res.json()")}`)
+      lines.push(`      return { status: ${ri.status} as const, body }`)
+    } else if (ri.model) {
+      lines.push(`      return { status: ${ri.status} as const, body: await res.json() }`)
     } else {
-      lines.push(`  return res.json()`)
+      lines.push(`      return { status: ${ri.status} as const }`)
     }
-  } else {
-    lines.push(`  return res`)
+    lines.push(`    }`)
   }
+  lines.push(`    default: { throw new Error(\`${operation.method} ${operation.path} failed: \${res.status}\`) }`)
+  lines.push(`  }`)
   lines.push(`}`)
 
   const body = lines.join("\n")
