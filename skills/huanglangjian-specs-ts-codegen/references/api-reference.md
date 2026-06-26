@@ -51,7 +51,7 @@ interface TsClientOptions {
 | File | Content |
 |---|---|
 | `models.ts` | Validation schemas (Zod or Valibot) + TypeScript interfaces |
-| `{group}/{id}.ts` | Per-operation: `XxxOperation` namespace (Request/Response types), async function with fetch + schema response validation |
+| `{group}/{id}.ts` | Per-operation: `XxxOperation` namespace (Request/Response types), async function returning `Promise<XxxOperation.Response>` — a discriminated union keyed by `status` with `as const` literals. All defined response statuses are handled as typed variants via `switch`/`case`, including schema-validated body for non-stream responses. Undefined statuses throw `Error` in the `default` branch. |
 | `index.ts` | Barrel re-exports grouped by router name |
 
 Array/set query params are serialized as repeated keys (`?k=a&k=b`).
