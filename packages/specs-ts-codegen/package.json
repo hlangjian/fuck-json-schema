@@ -1,6 +1,6 @@
 {
   "name": "@huanglangjian/specs-ts-codegen",
-  "version": "0.12.14",
+  "version": "0.13.0",
   "private": false,
   "files": [
     "dist"
