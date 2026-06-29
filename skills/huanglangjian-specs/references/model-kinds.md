@@ -24,6 +24,7 @@ Use the factory (left column). The right column shows generated output — do no
 | `enums` | `enums({ id, variants: {...}, ... })` | `type: "string", enum: [...]` |
 | `union` | `union({ id, variants: {...}, ... })` | `oneOf` with variant-key wrapper |
 | `taggedUnion` | `taggedUnion({ id, discriminator, variants, ... })` | `oneOf` with discriminator embedded in variant schemas |
+| `unknown` | `unknown(opts?)` | `{}` (matches any value) |
 
 ## Key rules
 

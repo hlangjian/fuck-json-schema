@@ -10,6 +10,10 @@ export interface BasicModel<T> {
   default?: T
 }
 
+export interface UnknownModel extends BasicModel<unknown> {
+  kind: "unknown"
+}
+
 export interface Int32Model extends BasicModel<number> {
   kind: "int32"
 }
@@ -156,6 +160,7 @@ export type Models =
   | DateModel
   | DurationModel
   | UuidModel
+  | UnknownModel
 
 export type InferModel<T> = T extends { schema?: StandardTypedV1<unknown, unknown> }
   ? StandardTypedV1.InferOutput<NonNullable<T["schema"]>>
@@ -261,4 +266,8 @@ export interface UuidModelOptions extends Omit<UuidModel, "kind"> {}
 
 export function uuid(options?: UuidModelOptions): UuidModel {
   return { kind: "uuid", ...options }
+}
+
+export function unknown(options?: Omit<UnknownModel, "kind">): UnknownModel {
+  return { kind: "unknown", ...options }
 }

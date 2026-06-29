@@ -190,6 +190,8 @@ export function toSchema(model: Models, schemaMap: SchemaMap, lib: ValidationLib
       const unionItems = Object.values(model.variants).map((v) => toSchema(v, schemaMap, lib))
       return lib.discriminatedUnion(model.discriminator, unionItems)
     }
+    case "unknown":
+      return lib.unknown()
     default:
       return lib.unknown()
   }
@@ -253,6 +255,8 @@ export function toTs(
         .map((v) => toTs(v as Models, schemaMap, identifier, namespace))
         .join(" | ")
     }
+    case "unknown":
+      return "unknown"
     default:
       return "unknown"
   }

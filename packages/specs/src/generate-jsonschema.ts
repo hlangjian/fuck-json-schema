@@ -326,6 +326,9 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
         registry: result.registry,
       }
     }
+    case "unknown": {
+      return { jsonSchema: { ...schema }, registry }
+    }
   }
 }
 
