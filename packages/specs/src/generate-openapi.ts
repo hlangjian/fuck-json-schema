@@ -50,6 +50,7 @@ export interface GenerateOpenapiOptions {
 
 interface FlatRoute {
   route: AnyRouteModel
+  operationKey: string
   group: string
   fullPath: string
 }
@@ -70,8 +71,9 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
   const { info, servers, routers, security, toJsonSchema } = options
 
   const flatRoutes: FlatRoute[] = routers.flatMap((router) =>
-    Object.entries(router.routes).map(([_key, route]) => ({
+    Object.entries(router.routes).map(([key, route]) => ({
       route,
+      operationKey: key,
       group: router.tag ?? router.id,
       fullPath: joinPath(router.basePath ?? "", route.path),
     })),
@@ -210,32 +212,33 @@ function collectNestedModels(model: Models): [string, Models][] {
 }
 
 function generatePaths(flatRoutes: FlatRoute[], registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): PathsObject {
-  return flatRoutes.reduce<Record<string, PathItemObject>>((paths, { route, group, fullPath }) => {
-    const existing = paths[fullPath] ?? {}
-    const method = route.method.toLowerCase() as keyof PathItemObject
+  return flatRoutes.reduce<Record<string, PathItemObject>>((paths, fr) => {
+    const existing = paths[fr.fullPath] ?? {}
+    const method = fr.route.method.toLowerCase() as keyof PathItemObject
 
     return {
       ...paths,
-      [fullPath]: {
+      [fr.fullPath]: {
         ...existing,
-        [method]: generateOperation(route, group, registry, toJsonSchema),
+        [method]: generateOperation(fr, registry, toJsonSchema),
       },
     }
   }, {} as Record<string, PathItemObject>)
 }
 
-function generateOperation(route: AnyRouteModel, group: string, registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): OperationObject {
-  const tags = route.tags?.includes(group)
-    ? route.tags
-    : [...(route.tags ?? []), group]
+function generateOperation(fr: FlatRoute, registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): OperationObject {
+  const tags = fr.route.tags?.includes(fr.group)
+    ? fr.route.tags
+    : [...(fr.route.tags ?? []), fr.group]
 
   return {
-    summary: route.summary,
-    description: route.description,
+    operationId: `${fr.group}.${fr.operationKey}`,
+    summary: fr.route.summary,
+    description: fr.route.description,
     tags,
-    parameters: generateParameters(route, registry, toJsonSchema),
-    requestBody: generateRequestBody(route, registry, toJsonSchema),
-    responses: generateResponses(route.responses, registry, toJsonSchema),
+    parameters: generateParameters(fr.route, registry, toJsonSchema),
+    requestBody: generateRequestBody(fr.route, registry, toJsonSchema),
+    responses: generateResponses(fr.route.responses, registry, toJsonSchema),
   }
 }
 
