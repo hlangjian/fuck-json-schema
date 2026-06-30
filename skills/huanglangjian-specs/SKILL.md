@@ -1,6 +1,6 @@
 ---
 name: huanglangjian-specs
-description: "Typed models, routes, and security; OpenAPI 3.2 & JSON Schema 2020-12 generation. Use when declaring typed request/response models, building a router, emitting OpenAPI or JSON Schema, or configuring API key / OpenID Connect security."
+description: "Typed models, routes, and security; OpenAPI 3.2 & JSON Schema 2020-12 generation. Use when declaring typed request/response models, building a router, emitting OpenAPI or JSON Schema, configuring API key / OpenID Connect security, or writing field titles/descriptions."
 ---
 
 # @huanglangjian/specs
@@ -26,4 +26,5 @@ description: "Typed models, routes, and security; OpenAPI 3.2 & JSON Schema 2020
 - [Usage example](./references/usage-example.md)
 - [Init guide](./references/init-guide.md)
 - [Patterns & best practices](./references/patterns.md)
+- [Writing guide](./references/writing-guide.md)
 - [Source map](./references/source-map.md)
