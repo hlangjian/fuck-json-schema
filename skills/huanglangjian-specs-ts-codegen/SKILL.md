@@ -1,11 +1,11 @@
 ---
 name: huanglangjian-specs-ts-codegen
-description: "Generate TypeScript server stubs and fetch-based client SDKs from @huanglangjian/specs route definitions."
+description: "TypeScript server stubs and fetch-based client SDKs. Use when scaffolding server handlers, generating a typed fetch client, or producing config.ts env-var parsing — given a RouterModel[] from @huanglangjian/specs."
 ---
 
 # @huanglangjian/specs-ts-codegen
 
-Generates framework-agnostic server handlers and fetch-based clients in TypeScript. Supports Zod (default) and Valibot validation.
+Supports Zod (default) and Valibot validation.
 
 ## Workflow
 

@@ -31,4 +31,4 @@ Use the factory (left column). The right column shows generated output — do no
 - `record`, `enums`, `union`, `taggedUnion` **require an `id`** — they become named schemas.
 - `taggedUnion` uses `discriminator` to specify which field acts as the discriminator. Each variant's `RecordModel` must include that field as a required `literal(value)` where the value matches the variant key.
 - `union` wraps each variant in `{ [variantName]: variantSchema }`.
-- `set` generates `uniqueItems: true` in JSON Schema; in codegen it emits `z.array()` for Zod (runtime dedup expected).
+- `set` generates `uniqueItems: true` in JSON Schema.

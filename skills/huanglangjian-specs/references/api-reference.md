@@ -10,7 +10,7 @@ route({
   body?: Models,                           // request body
   queries?: RecordModel<...>,              // query parameters
   headers?: RecordModel<...>,              // request headers
-  responses: Record<string, ResponseModel>,  // status code -> response
+  responses: Record<number, ResponseModel>,  // status code -> response
   tags?: string[],                         // auto-populated from RouterModel.tag ?? RouterModel.id
   summary?: string,
   description?: string,
@@ -108,7 +108,7 @@ Flattens all routers into operation descriptors with extracted path variables, q
 
 Builds a schema lookup map from collected operations for codegen.
 
-### `topologicalSortSchemaMap(schemaMap)` → `[string, SchemaInfo][]`
+### `topologicalSortSchemaMap(schemaMap)` → `[string, Models][]`
 
 Topologically sorts schema map entries so dependencies come before dependents.
 
