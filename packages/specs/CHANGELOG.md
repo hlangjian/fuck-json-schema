@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.14.2
+
+### Patch Changes
+
+- 70dbfb1: Generate `operationId` for every OpenAPI operation using `{group}.{routeKey}` format.
+
 ## 0.14.1
 
 ### Patch Changes
