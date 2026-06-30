@@ -178,7 +178,10 @@ function collectModelsFromResponse(response: AnyResponseModel): Models[] {
 }
 
 function collectModelDeep(model: Models): [string, Models][] {
-  const self: [string, Models][] = "id" in model && model.id != null ? [[model.id as string, model]] : []
+  const self: [string, Models][] =
+    typeof model === "object" && model !== null && "id" in model && model.id != null
+      ? [[model.id as string, model]]
+      : []
 
   const nested = collectNestedModels(model)
 

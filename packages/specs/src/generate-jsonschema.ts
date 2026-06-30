@@ -342,7 +342,7 @@ export function createJsonSchemaRegistry(
 
   const registry: SchemaRegistry = {
     getRef(model) {
-      if (!("id" in model)) return undefined
+      if (typeof model !== "object" || model === null || !("id" in model)) return undefined
       const entry = map.get(model.id as string)
       return entry ? "#/$defs/" + entry.id : undefined
     },
@@ -368,7 +368,7 @@ export function createOpenapiSchemaRegistry(
 
   const registry: SchemaRegistry = {
     getRef(model) {
-      if (!("id" in model)) return undefined
+      if (typeof model !== "object" || model === null || !("id" in model)) return undefined
       const entry = map.get(model.id as string)
       return entry ? "#/components/schemas/" + entry.id : undefined
     },
@@ -395,7 +395,7 @@ function collectNamedModels(model: Models): Models[] {
   const walk = (m: Models) => {
     if (seen.has(m)) return
     seen.add(m)
-    if ("id" in m) out.push(m)
+    if (typeof m === "object" && m !== null && "id" in m) out.push(m)
     if (m.kind === "record") {
       Object.values(m.properties).forEach((v) => walk(v))
     } else if (m.kind === "union" || m.kind === "taggedUnion") {

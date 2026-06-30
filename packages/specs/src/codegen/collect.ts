@@ -174,7 +174,7 @@ export function collectSchemaMap(ops: OperationDescriptor[]): SchemaMap {
   const all = collectAll(ops)
   const map: SchemaMap = new Map()
   for (const m of all) {
-    if ("id" in m && !map.has(m.id)) map.set(m.id, m)
+    if (typeof m === "object" && m !== null && "id" in m && !map.has(m.id)) map.set(m.id, m)
   }
   return map
 }
@@ -224,7 +224,7 @@ function collectDependencies(model: Models, schemaMap: SchemaMap): string[] {
     if (seen.has(m)) return
     seen.add(m)
 
-    if ("id" in m && schemaMap.has(m.id)) {
+    if (typeof m === "object" && m !== null && "id" in m && schemaMap.has(m.id)) {
       deps.push(m.id)
       return
     }
