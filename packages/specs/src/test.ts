@@ -6,7 +6,7 @@ import type { HttpMethod } from "./api"
 import { binary as binaryResponse, json, route, router } from "./api"
 import { generateOpenapi } from "./generate-openapi"
 import { collectNamedModels, collectOperations } from "./codegen/collect"
-import { generateJsonSchema } from "./generate-jsonschema"
+import { generateConfigJsonSchema } from "./generate-jsonschema"
 import { apikey, openIdConnect } from "./security"
 import type { SecurityPolicyModel } from "./security"
 import { deployOpenIdConnect } from "./deployment"
@@ -252,7 +252,9 @@ const router = router({
 })
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
 const outDir = resolve(__dirname, "..", "output")
+
 mkdirSync(outDir, { recursive: true })
 
 // Security components
@@ -307,18 +309,23 @@ const { openapi } = generateOpenapi({
 })
 
 writeFileSync(resolve(outDir, "openapi.json"), JSON.stringify(openapi, null, 2), "utf-8")
+
 console.log("✅ openapi.json")
 
 // 2. Server config JSON Schema
-const configSchema = generateJsonSchema(ServerConfig)
+const configSchema = generateConfigJsonSchema(ServerConfig)
 
 writeFileSync(resolve(outDir, "server-config.schema.json"), JSON.stringify(configSchema, null, 2), "utf-8")
+
 console.log("✅ server-config.schema.json")
 
 // 3. Codegen model collection demo
 const allModels = [Warehouse, CreateWarehouse, UpdateWarehouse, ErrorResponse, OldWarehouse]
+
 const named = collectNamedModels(allModels)
+
 const ops = collectOperations([router])
 
 console.log(`  → ${named.length} named models collected`)
+
 console.log(`  → ${ops.length} operations collected`)

@@ -1,10 +1,19 @@
 export * from "./api"
+
 export * from "./types"
+
 export * from "./security"
+
 export * from "./deployment"
-export { buildJsonSchema, generateJsonSchema, createJsonSchemaRegistry, createOpenapiSchemaRegistry } from "./generate-jsonschema"
+
+export { buildJsonSchema, generateJsonSchema, generateConfigJsonSchema, createJsonSchemaRegistry, createOpenapiSchemaRegistry } from "./generate-jsonschema"
+
 export type { BuildJsonSchemaOptions, SchemaRegistry, ToJsonSchema } from "./generate-jsonschema"
+
 export * from "./generate-openapi"
+
 export * from "./codegen/descriptors"
+
 export * from "./codegen/collect"
+
 export * from "./codegen/utils"

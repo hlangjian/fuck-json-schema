@@ -1,6 +1,7 @@
 import type { StandardTypedV1 } from "@standard-schema/spec"
 
 import type { JsonSchema, JsonSchemaObject } from "./schemas/json-schema-draft-2020-12"
+import { array, map, record, set, taggedUnion, union } from "./types"
 import type { Models } from "./types"
 
 export interface SchemaRegistry {
@@ -141,6 +142,7 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
 
     case "array": {
       const ref = registry.getRef(model.base)
+
       if (ref) {
         return {
           jsonSchema: { ...schema, type: "array", items: { $ref: ref } },
@@ -162,6 +164,7 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
 
     case "map": {
       const ref = registry.getRef(model.base)
+
       if (ref) {
         return {
           jsonSchema: { ...schema, type: "object", additionalProperties: { $ref: ref } },
@@ -183,6 +186,7 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
 
     case "set": {
       const ref = registry.getRef(model.base)
+
       if (ref) {
         return {
           jsonSchema: { ...schema, type: "array", items: { $ref: ref }, uniqueItems: true },
@@ -326,6 +330,7 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
         registry: result.registry,
       }
     }
+
     case "unknown": {
       return { jsonSchema: { ...schema }, registry }
     }
@@ -343,16 +348,21 @@ export function createJsonSchemaRegistry(
   const registry: SchemaRegistry = {
     getRef(model) {
       if (typeof model !== "object" || model === null || !("id" in model)) return undefined
+
       const entry = map.get(model.id as string)
+
       return entry ? "#/$defs/" + entry.id : undefined
     },
     add(id, model) {
       const { jsonSchema } = buildJsonSchema({ model, registry, toJsonSchema })
+
       return createJsonSchemaRegistry(map.set(id, { id, schema: jsonSchema }), toJsonSchema)
     },
     getDefs() {
       const defs: Record<string, JsonSchema> = {}
+
       map.forEach(({ id, schema }) => { defs[id] = schema })
+
       return defs
     },
   }
@@ -369,16 +379,21 @@ export function createOpenapiSchemaRegistry(
   const registry: SchemaRegistry = {
     getRef(model) {
       if (typeof model !== "object" || model === null || !("id" in model)) return undefined
+
       const entry = map.get(model.id as string)
+
       return entry ? "#/components/schemas/" + entry.id : undefined
     },
     add(id, model) {
       const { jsonSchema } = buildJsonSchema({ model, registry, toJsonSchema })
+
       return createOpenapiSchemaRegistry(map.set(id, { id, schema: jsonSchema }), toJsonSchema)
     },
     getDefs() {
       const defs: Record<string, JsonSchema> = {}
+
       map.forEach(({ id, schema }) => { defs[id] = schema })
+
       return defs
     },
   }
@@ -391,11 +406,16 @@ export function createOpenapiSchemaRegistry(
  */
 function collectNamedModels(model: Models): Models[] {
   const seen = new Set<Models>()
+
   const out: Models[] = []
+
   const walk = (m: Models) => {
     if (seen.has(m)) return
+
     seen.add(m)
+
     if (typeof m === "object" && m !== null && "id" in m) out.push(m)
+
     if (m.kind === "record") {
       Object.values(m.properties).forEach((v) => walk(v))
     } else if (m.kind === "union" || m.kind === "taggedUnion") {
@@ -404,7 +424,9 @@ function collectNamedModels(model: Models): Models[] {
       walk(m.base)
     }
   }
+
   walk(model)
+
   // 排除根模型自身，只返回子依赖
   return out.filter((m) => m !== model)
 }
@@ -427,15 +449,151 @@ export function generateJsonSchema(
   options?: { toJsonSchema?: ToJsonSchema },
 ): JsonSchemaObject {
   const deps = collectNamedModels(model)
+
   const toJsonSchema = options?.toJsonSchema
+
   const registry = deps.reduce(
     (reg, m) => reg.add((m as { id: string }).id, m),
     createJsonSchemaRegistry(undefined, toJsonSchema),
   )
+
   const { jsonSchema } = buildJsonSchema({ model, registry, toJsonSchema })
+
   return {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     ...(jsonSchema as Record<string, unknown>),
     $defs: registry.getDefs(),
   } as JsonSchemaObject
+}
+
+function hasDefault(m: Models): boolean {
+  return "default" in m && (m as any).default != null
+}
+
+function toConfigInput(model: Models, cache = new Map<Models, Models>()): Models {
+  const cached = cache.get(model)
+
+  if (cached) return cached
+
+  if (model.kind === "record") {
+    const defaults: string[] = []
+
+    const properties: Record<string, Models> = {}
+
+    for (const [key, propModel] of Object.entries(model.properties)) {
+      properties[key] = toConfigInput(propModel, cache)
+
+      if (hasDefault(propModel)) {
+        defaults.push(key)
+      }
+    }
+
+    const existingOptional = Object.keys(model.properties).filter(
+      (k) => !(model.required as string[]).includes(k),
+    )
+
+    const newOptional = [...new Set([...existingOptional, ...defaults])]
+
+    const result = record({
+      id: model.id,
+      title: model.title,
+      description: model.description,
+      deprecated: model.deprecated,
+      examples: model.examples,
+      properties: properties as any,
+      optional: newOptional as any,
+    })
+
+    cache.set(model, result)
+
+    return result
+  }
+
+  if (model.kind === "taggedUnion") {
+    const variants: Record<string, Models> = {}
+
+    for (const [key, variant] of Object.entries(model.variants)) {
+      variants[key] = toConfigInput(variant, cache)
+    }
+
+    const result = taggedUnion({
+      id: model.id,
+      discriminator: model.discriminator as any,
+      variants: variants as any,
+      title: model.title,
+      description: model.description,
+      deprecated: model.deprecated,
+      examples: model.examples,
+    } as any)
+
+    cache.set(model, result)
+
+    return result
+  }
+
+  if (model.kind === "union") {
+    const variants: Record<string, Models> = {}
+
+    for (const [key, variant] of Object.entries(model.variants)) {
+      variants[key] = toConfigInput(variant, cache)
+    }
+
+    const result = union({
+      id: model.id,
+      variants: variants as any,
+      title: model.title,
+      description: model.description,
+      deprecated: model.deprecated,
+      examples: model.examples,
+    } as any)
+
+    cache.set(model, result)
+
+    return result
+  }
+
+  if ((model.kind === "array" || model.kind === "set" || model.kind === "map") && "id" in model.base) {
+    const builder = model.kind === "array" ? array : model.kind === "set" ? set : map
+
+    const result = (builder as any)({
+      base: toConfigInput(model.base, cache),
+      title: model.title,
+      description: model.description,
+      deprecated: model.deprecated,
+      examples: model.examples,
+      default: model.default,
+    })
+
+    cache.set(model, result)
+
+    return result
+  }
+
+  return model
+}
+
+/**
+ * 为配置模型生成 JSON Schema（Draft 2020-12）。
+ *
+ * 与 {@link generateJsonSchema} 的区别在于：会自动将配置模型中含 `default` 的字段标记为 optional，
+ * 递归处理所有嵌套的命名模型。因为配置模型定义的是解析后的类型（所有有 default 的字段必定有值），
+ * 而 JSON Schema 应反映输入格式（有 default 的字段可以不传）。
+ *
+ * @example
+ * const ServerConfig = record({
+ *   id: "ServerConfig",
+ *   properties: {
+ *     port: int32({ default: 8080 }),
+ *     host: string({ default: "0.0.0.0" }),
+ *   },
+ * })
+ *
+ * generateConfigJsonSchema(ServerConfig)
+ * // → port 和 host 不会出现在 required 中
+ */
+export function generateConfigJsonSchema(
+  configModel: Models,
+  options?: { toJsonSchema?: ToJsonSchema },
+): JsonSchemaObject {
+  return generateJsonSchema(toConfigInput(configModel), options)
 }
