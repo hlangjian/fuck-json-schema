@@ -258,7 +258,9 @@ const warehousesRouter = router({
 })
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
 const outDir = resolve(__dirname, "..", "output")
+
 mkdirSync(outDir, { recursive: true })
 
 // 1. Server handler code
@@ -266,28 +268,42 @@ const serverFiles = generateTsServer({
   routers: [warehousesRouter],
   configuration: ServerConfig,
 })
+
 const serverOutDir = resolve(outDir, "server-handlers")
+
 rmSync(serverOutDir, { recursive: true, force: true })
+
 mkdirSync(serverOutDir, { recursive: true })
+
 for (const [path, content] of Object.entries(serverFiles)) {
   const full = resolve(serverOutDir, path)
+
   mkdirSync(dirname(full), { recursive: true })
+
   writeFileSync(full, content, "utf-8")
 }
+
 console.log(`✅ server-handlers (${Object.keys(serverFiles).length} files)`)
 
 // 2. TypeScript client code
 const clientFiles = generateTsClient({
   routers: [warehousesRouter],
 })
+
 const clientOutDir = resolve(outDir, "api-client")
+
 rmSync(clientOutDir, { recursive: true, force: true })
+
 mkdirSync(clientOutDir, { recursive: true })
+
 for (const [path, content] of Object.entries(clientFiles)) {
   const full = resolve(clientOutDir, path)
+
   mkdirSync(dirname(full), { recursive: true })
+
   writeFileSync(full, content, "utf-8")
 }
+
 console.log(`✅ api-client (${Object.keys(clientFiles).length} files)`)
 
 // 3. Valibot server handler code
@@ -296,14 +312,21 @@ const vbServerFiles = generateTsServer({
   configuration: ServerConfig,
   validationLib: "valibot",
 })
+
 const vbServerOutDir = resolve(outDir, "server-handlers-valibot")
+
 rmSync(vbServerOutDir, { recursive: true, force: true })
+
 mkdirSync(vbServerOutDir, { recursive: true })
+
 for (const [path, content] of Object.entries(vbServerFiles)) {
   const full = resolve(vbServerOutDir, path)
+
   mkdirSync(dirname(full), { recursive: true })
+
   writeFileSync(full, content, "utf-8")
 }
+
 console.log(`✅ server-handlers-valibot (${Object.keys(vbServerFiles).length} files)`)
 
 // 4. Valibot client code
@@ -311,12 +334,19 @@ const vbClientFiles = generateTsClient({
   routers: [warehousesRouter],
   validationLib: "valibot",
 })
+
 const vbClientOutDir = resolve(outDir, "api-client-valibot")
+
 rmSync(vbClientOutDir, { recursive: true, force: true })
+
 mkdirSync(vbClientOutDir, { recursive: true })
+
 for (const [path, content] of Object.entries(vbClientFiles)) {
   const full = resolve(vbClientOutDir, path)
+
   mkdirSync(dirname(full), { recursive: true })
+
   writeFileSync(full, content, "utf-8")
 }
+
 console.log(`✅ api-client-valibot (${Object.keys(vbClientFiles).length} files)`)

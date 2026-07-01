@@ -13,8 +13,11 @@ import { array, int32, record, string } from "./types"
 describe("buildJsonSchema", () => {
   it("generates schema for int32", () => {
     const { jsonSchema } = buildJsonSchema({ model: int32() })
+
     const s = jsonSchema as JsonSchemaObject
+
     expect(s.type).toBe("integer")
+
     expect(s.format).toBe("int32")
   })
 
@@ -23,10 +26,15 @@ describe("buildJsonSchema", () => {
       id: "User",
       properties: { name: string() },
     })
+
     const { jsonSchema } = buildJsonSchema({ model })
+
     const s = jsonSchema as JsonSchemaObject
+
     expect(s.type).toBe("object")
+
     expect(s.additionalProperties).toBe(false)
+
     expect(s.required).toEqual(["name"])
   })
 })
@@ -54,9 +62,13 @@ describe("generateOpenapi", () => {
       info: { title: "Test", version: "1.0.0" },
       routers: [{ id: "TestGroup", routes: router }],
     })
+
     expect(openapi.openapi).toBe("3.2.0")
+
     expect(openapi.info.title).toBe("Test")
+
     expect(openapi.paths?.["/warehouses"]?.get?.summary).toBe("List")
+
     expect(openapi.components?.schemas).toBeDefined()
   })
 
@@ -85,12 +97,15 @@ describe("generateOpenapi", () => {
     })
 
     const scheme = openapi.components?.securitySchemes?.["xKey"]
+
     expect(scheme).toBeDefined()
+
     if (scheme && "type" in scheme) {
       expect(scheme.type).toBe("apiKey")
     }
 
     const op = openapi.paths?.["/warehouses"]?.get
+
     expect(op?.security).toEqual([{ xKey: [] }])
   })
 
@@ -124,13 +139,17 @@ describe("generateOpenapi", () => {
     })
 
     const scheme = openapi.components?.securitySchemes?.["keycloak"]
+
     expect(scheme).toBeDefined()
+
     if (scheme && "type" in scheme) {
       expect(scheme.type).toBe("openIdConnect")
     }
 
     const getOp = openapi.paths?.["/warehouses"]?.get
+
     expect(getOp?.security).toEqual([{ keycloak: ["read"] }])
+
     expect(getOp?.security?.[0]?.keycloak).not.toContain("write")
   })
 
@@ -173,6 +192,7 @@ describe("generateOpenapi", () => {
         responses: { 200: json({ body: array({ base: Warehouse }) }) },
       }),
     }
+
     const routerB = {
       list: route({
         method: "GET",
@@ -191,6 +211,7 @@ describe("generateOpenapi", () => {
     })
 
     expect(openapi.paths?.["/warehouses"]?.get?.tags).toContain("Warehouses")
+
     expect(openapi.paths?.["/items"]?.get?.tags).toContain("Items")
   })
 
@@ -210,6 +231,7 @@ describe("generateOpenapi", () => {
     })
 
     expect(openapi.paths?.["/api/v1/warehouses"]).toBeDefined()
+
     expect(openapi.paths?.["/warehouses"]).toBeUndefined()
   })
 })

@@ -62,8 +62,11 @@ export interface GenerateOpenapiResult {
 
 function joinPath(basePath: string, routePath: string): string {
   if (!basePath) return routePath
+
   const base = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath
+
   const route = routePath.startsWith("/") ? routePath : `/${routePath}`
+
   return `${base}${route}`
 }
 
@@ -98,11 +101,15 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
 
   const tags = routers.reduce<TagObject[]>((acc, router) => {
     const tagName = router.tag ?? router.id
+
     if (!acc.some((t) => t.name === tagName)) {
       const tag: TagObject = { name: tagName }
+
       if (router.description) tag.description = router.description
+
       acc.push(tag)
     }
+
     return acc
   }, [])
 
@@ -112,11 +119,13 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
 
   if (security?.policy) {
     const schemeResult = buildSecuritySchemes(security.policy, security.deployments)
+
     if (schemeResult.schemes && Object.keys(schemeResult.schemes).length > 0) {
       components = { ...components, securitySchemes: schemeResult.schemes } as ComponentsObject
     }
 
     const securedPaths = applySecurityToPaths(paths, security.policy)
+
     if (securedPaths) {
       return {
         openapi: {
@@ -147,8 +156,10 @@ export function generateOpenapi(options: GenerateOpenapiOptions): GenerateOpenap
 function collectNamedModels(routes: AnyRouteModel[]): Map<string, Models> {
   return routes.reduce<Map<string, Models>>((models, route) => {
     const fromRoute = collectModelsFromRoute(route)
+
     return [...fromRoute.entries()].reduce((acc, [id, model]) => {
       if (!acc.has(id)) acc.set(id, model)
+
       return acc
     }, models)
   }, new Map<string, Models>())
@@ -162,6 +173,7 @@ function collectModelsFromRoute(route: AnyRouteModel): Map<string, Models> {
   return sources.reduce<Map<string, Models>>((acc, model) => {
     return collectModelDeep(model).reduce((inner, [id, m]) => {
       if (!inner.has(id)) inner.set(id, m)
+
       return inner
     }, acc)
   }, new Map<string, Models>())
@@ -170,7 +182,9 @@ function collectModelsFromRoute(route: AnyRouteModel): Map<string, Models> {
 function collectModelsFromResponse(response: AnyResponseModel): Models[] {
   switch (response.kind) {
     case "json-response":
+
     case "stream-response":
+
     case "sse-response":
       return response.body ? [response.body] : []
 
@@ -193,7 +207,9 @@ function collectModelDeep(model: Models): [string, Models][] {
 function collectNestedModels(model: Models): [string, Models][] {
   switch (model.kind) {
     case "array":
+
     case "set":
+
     case "map":
       return collectModelDeep(model.base)
 
@@ -214,6 +230,7 @@ function collectNestedModels(model: Models): [string, Models][] {
 function generatePaths(flatRoutes: FlatRoute[], registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): PathsObject {
   return flatRoutes.reduce<Record<string, PathItemObject>>((paths, fr) => {
     const existing = paths[fr.fullPath] ?? {}
+
     const method = fr.route.method.toLowerCase() as keyof PathItemObject
 
     return {
@@ -252,6 +269,7 @@ function generateParameters(
   )
 
   const queries = route.queries
+
   const headers = route.headers
 
   const queryParams = queries
@@ -409,6 +427,7 @@ function generateResponseContent(
 
 function getSchema(model: Models, registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): JsonSchema {
   const ref = registry.getRef(model)
+
   return ref ? { $ref: ref } : buildJsonSchema({ model, registry, toJsonSchema }).jsonSchema
 }
 
@@ -428,17 +447,22 @@ function buildSecuritySchemes(
     switch (component.kind) {
       case "apikey":
         schemes[component.id] = toApiKeyScheme(component)
+
         break
 
       case "openIdConnect": {
         const deployment = findDeployment(component, deployments)
+
         if (!deployment || deployment.kind !== "openIdConnectDeployment") {
           console.warn(
             `[generateOpenapi] Security scheme "${component.id}" (openIdConnect) has no matching deployment, skipping`,
           )
+
           break
         }
+
         schemes[component.id] = toOpenIdConnectScheme(component, deployment)
+
         break
       }
     }
@@ -452,9 +476,11 @@ function findDeployment(
   deployments?: Record<string, SecurityDeployment>,
 ): SecurityDeployment | undefined {
   if (!deployments) return undefined
+
   for (const dep of Object.values(deployments)) {
     if (dep.component.id === component.id) return dep
   }
+
   return undefined
 }
 
@@ -484,13 +510,16 @@ function toOpenIdConnectScheme(
 
 function collectSecurityComponents(policy: SecurityPolicyModel): SecurityComponent[] {
   const seen = new Set<string>()
+
   const result: SecurityComponent[] = []
 
   for (const pathItem of Object.values(policy.paths)) {
     if (!pathItem.pipeline) continue
+
     for (const apply of pathItem.pipeline) {
       if (!seen.has(apply.component.id)) {
         seen.add(apply.component.id)
+
         result.push(apply.component)
       }
     }
@@ -510,9 +539,11 @@ function applySecurityToPaths(
   return Object.entries(paths).reduce<Record<string, PathItemObject>>((acc, [pathKey, pathItem]) => {
     const securedItem = operationMethods.reduce<PathItemObject>((methodAcc, method) => {
       const op = pathItem[method]
+
       if (!op) return methodAcc
 
       const requirements = resolveSecurityRequirements(policy, pathKey, method)
+
       if (requirements.length === 0) return methodAcc
 
       return { ...methodAcc, [method]: { ...op, security: requirements } }
@@ -533,6 +564,7 @@ function resolveSecurityRequirements(
     if (!matchesPath(pattern, pathKey)) continue
 
     const methods = pathItem.methods
+
     if (methods && methods.length > 0 && !methods.includes(method.toUpperCase() as never)) continue
 
     if (!pathItem.pipeline) continue

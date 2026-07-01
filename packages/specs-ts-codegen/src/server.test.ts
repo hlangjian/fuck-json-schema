@@ -28,6 +28,7 @@ const SortOrder = enums({
 })
 
 const Warehouse = record({ id: "Warehouse", properties: { id: int32(), name: string(), createdAt: datetime() } })
+
 const CreateWarehouse = record({ id: "CreateWarehouse", properties: { name: string() } })
 
 const warehouses = router({
@@ -95,6 +96,7 @@ describe("generateTsServer config import path", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     expect(files["config.ts"]).toContain(`from "./models"`)
+
     expect(files["config.ts"]).not.toContain(`from "../models"`)
   })
 
@@ -102,6 +104,7 @@ describe("generateTsServer config import path", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     const opFile = files["warehouses/getWarehouse.ts"]
+
     expect(opFile).toContain(`from "../models"`)
   })
 })
@@ -111,9 +114,13 @@ describe("generateTsServer named-type imports for query params", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     const opFile = files["warehouses/listWarehouses.ts"]
+
     expect(opFile).toContain(`import type {`)
+
     expect(opFile).toContain("WarehouseStatus")
+
     expect(opFile).toContain("SortOrder")
+
     expect(opFile).toMatch(/import type \{[^}]*\} from "\.\.\/models"/)
   })
 })
@@ -123,8 +130,11 @@ describe("generateTsServer config switch exhaustiveness", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     const config = files["config.ts"]
+
     expect(config).toContain("function resolveDatabase(")
+
     expect(config).toContain("function resolveCache(")
+
     expect(config).toContain("throw new Error(`unknown variant: ${dv}`)")
   })
 })
@@ -134,7 +144,9 @@ describe("generateTsServer validation namespace import", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig, validationLib: "valibot" })
 
     const opFile = files["warehouses/createWarehouse.ts"]
+
     expect(opFile).toContain("v.parse(")
+
     expect(opFile).toContain(`import * as v from "valibot"`)
   })
 
@@ -142,6 +154,7 @@ describe("generateTsServer validation namespace import", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     const opFile = files["warehouses/createWarehouse.ts"]
+
     expect(opFile).not.toContain(`import { z } from "zod"`)
   })
 })
@@ -151,8 +164,11 @@ describe("generateTsServer config env array/set schema", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     const config = files["config.ts"]
+
     expect(config).toContain("z.array(")
+
     expect(config).not.toContain("z.set(")
+
     expect(config).not.toContain("new Set(")
   })
 })
@@ -162,7 +178,9 @@ describe("generateTsServer models use non-deprecated zod string formats", () => 
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     const models = files["models.ts"]
+
     expect(models).toContain("z.iso.datetime()")
+
     expect(models).not.toContain("z.string().datetime()")
   })
 })
@@ -172,6 +190,7 @@ describe("generateTsServer unused handler parameters", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     const opFile = files["warehouses/ping.ts"]
+
     expect(opFile).toContain("async (_request: Request, _params?: Record<string, string>)")
   })
 
@@ -179,6 +198,7 @@ describe("generateTsServer unused handler parameters", () => {
     const files = generateTsServer({ routers: [warehouses], configuration: ServerConfig })
 
     const opFile = files["warehouses/createWarehouse.ts"]
+
     expect(opFile).toContain("async (request: Request, _params?: Record<string, string>)")
   })
 })
@@ -188,6 +208,7 @@ describe("generateTsServer config env default/optional", () => {
     const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
 
     expect(config).toContain("PORT: z.coerce.number().int().default(8080),")
+
     expect(config).toContain('HOST: z.string().default("0.0.0.0"),')
   })
 
@@ -195,6 +216,7 @@ describe("generateTsServer config env default/optional", () => {
     const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
 
     expect(config).toContain('LOG_LEVEL: z.enum(["debug","info"]).default("info"),')
+
     expect(config).not.toContain('.default("info").optional()')
   })
 
@@ -202,6 +224,7 @@ describe("generateTsServer config env default/optional", () => {
     const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
 
     expect(config).toMatch(/TAGS: .*\.optional\(\),/)
+
     expect(config).not.toMatch(/TAGS: [^\n]*\.default\(/)
   })
 
@@ -219,7 +242,9 @@ describe("generateTsServer taggedUnion discriminator env var", () => {
     const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
 
     expect(config).toContain('DATABASE_TYPE: z.enum(["postgres","sqlite"]),')
+
     expect(config).toContain("resolveDatabase(env, e.DATABASE_TYPE)")
+
     expect(config).not.toMatch(/\n {2}DATABASE: z\.enum/)
   })
 })
@@ -231,7 +256,9 @@ describe("generateTsServer path-variable handler null guard", () => {
     ]
 
     expect(opFile).toContain("const match = getWarehousePattern.exec(request.url)")
+
     expect(opFile).toContain("if (!params && !match) return new Response(null, { status: 404 })")
+
     expect(opFile).not.toContain(".exec(request.url)!")
   })
 })

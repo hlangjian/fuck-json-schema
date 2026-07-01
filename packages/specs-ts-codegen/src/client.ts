@@ -17,8 +17,11 @@ export interface TsClientOptions {
 
 export function generateTsClient(options: TsClientOptions): Record<string, string> {
   const { routers, identifier = pascalCase, namespace, models, validationLib } = options
+
   const lib = resolveLib(validationLib ?? "zod")
+
   const operations = collectOperations(routers)
+
   const schemaMap = collectSchemaMap(operations)
 
   if (models) {
@@ -46,9 +49,13 @@ export function generateTsClient(options: TsClientOptions): Record<string, strin
 
 function opJsdoc(op: { summary?: string; description?: string; deprecated?: boolean }): string | null {
   const tags: string[] = []
+
   if (op.summary) tags.push(`@summary ${op.summary}`)
+
   if (op.description) tags.push(`@description ${op.description}`)
+
   if (op.deprecated) tags.push("@deprecated")
+
   return tags.length > 0 ? `/**\n * ${tags.join("\n * ")}\n */` : null
 }
 
@@ -60,43 +67,65 @@ function generateClientFn(
   namespace: string | undefined,
 ): string {
   const lines: string[] = []
+
   const functionName = camelCase(operation.id)
+
   const OperationName = pascalCase(operation.id)
+
   const hasBody = operation.requestModel != null && operation.requestModel.kind !== "null"
+
   const hasParams = Object.keys(operation.pathVariables).length > 0
+
   const hasQuery = Object.keys(operation.queries).length > 0
+
   const hasHeaders = Object.keys(operation.headers).length > 0
 
   const typeImports: string[] = []
+
   const addNamedRef = (model: Models) => {
     const root = resolveNamedRoot(model)
+
     if (root) {
       const typeName = identifier(root.id)
+
       if (schemaMap.has(root.id) && !typeImports.includes(typeName)) {
         typeImports.push(typeName)
       }
     }
   }
+
   if (hasBody) addNamedRef(operation.requestModel!)
+
   for (const responseModel of Object.values(operation.responses)) {
     if (responseModel != null) addNamedRef(responseModel)
   }
+
   for (const v of Object.values(operation.pathVariables)) addNamedRef(v.model)
+
   for (const v of Object.values(operation.queries)) addNamedRef(v.model)
+
   for (const v of Object.values(operation.headers)) addNamedRef(v.model)
 
   const responseEntries = Object.entries(operation.responses) as [string, Models | null][]
+
   const responseKind = (status: string): string => operation.responseKinds[Number(status)] ?? "json-response"
+
   const respInfo: { status: number; model: Models | null; kind: string; isStreamLike: boolean; schemaExpr: string | null }[] = []
+
   for (const [s, model] of responseEntries) {
     const status = Number(s)
+
     const kind = responseKind(s)
+
     const isStreamLike = kind === "stream-response" || kind === "sse-response" || kind === "binary"
+
     const schemaExpr = model && !isStreamLike ? resolveSchemaExpr(model, schemaMap, lib) : null
+
     respInfo.push({ status, model, kind, isStreamLike, schemaExpr })
   }
 
   const schemaImports: string[] = []
+
   for (const ri of respInfo) {
     if (ri.model && !ri.isStreamLike) {
       for (const r of collectSchemaRefs(ri.model, schemaMap)) {
@@ -104,78 +133,114 @@ function generateClientFn(
       }
     }
   }
+
   if (typeImports.length > 0) {
     lines.push(`import type { ${typeImports.join(", ")} } from "../models"`)
   }
+
   if (schemaImports.length > 0) {
     lines.push(`import { ${schemaImports.join(", ")} } from "../models"`)
   }
+
   if (typeImports.length > 0 || schemaImports.length > 0) {
     lines.push("")
   }
 
   const opDoc = opJsdoc(operation)
+
   if (opDoc) lines.push(opDoc)
+
   lines.push(`export namespace ${OperationName}Operation {`)
+
   lines.push("")
 
   lines.push(`  export interface Request {`)
+
   if (hasParams) {
     lines.push(`    params: {`)
+
     for (const [n, v] of Object.entries(operation.pathVariables)) {
       const doc = fieldJsdoc(v.model, "      ")
+
       if (doc) lines.push(doc)
+
       lines.push(`      ${n}: ${toTs(v.model, schemaMap, identifier, namespace)};`)
     }
+
     lines.push(`    };`)
   }
+
   if (hasQuery) {
     lines.push(`    query: {`)
+
     for (const [n, q] of Object.entries(operation.queries)) {
       const doc = fieldJsdoc(q.model, "      ")
+
       if (doc) lines.push(doc)
+
       const opt = q.required ? "" : "?"
+
       lines.push(`      ${n}${opt}: ${toTs(q.model, schemaMap, identifier, namespace)};`)
     }
+
     lines.push(`    };`)
   }
+
   if (hasHeaders) {
     lines.push(`    headers?: {`)
+
     for (const [key, header] of Object.entries(operation.headers)) {
       const doc = fieldJsdoc(header.model, "      ")
+
       if (doc) lines.push(doc)
+
       lines.push(
         `      "${key}"${header.required ? "" : "?"}: ${toTs(header.model, schemaMap, identifier, namespace)};`,
       )
     }
+
     lines.push(`    } & Record<string, string>;`)
   } else {
     lines.push(`    headers?: Record<string, string>;`)
   }
+
   if (hasBody) {
     const bodyDoc = fieldJsdoc(operation.requestModel!, "    ")
+
     if (bodyDoc) lines.push(bodyDoc)
+
     lines.push(`    body: ${toTs(operation.requestModel!, schemaMap, identifier, namespace)};`)
   }
+
   lines.push(`    baseUrl?: string;`)
+
   lines.push(`  }`)
+
   lines.push("")
 
   const responseBodyField = (kind: string, responseModel: Models | null) => {
     if (responseModel == null) {
       if (kind === "binary") return "body: Blob"
+
       return null
     }
+
     if (kind === "stream-response" || kind === "sse-response") {
       return `stream: ReadableStream<${toTs(responseModel, schemaMap, identifier, namespace)}>`
     }
+
     if (kind === "binary") return "body: Blob"
+
     return `body: ${toTs(responseModel, schemaMap, identifier, namespace)}`
   }
+
   if (responseEntries.length === 1) {
     const [status, responseModel] = responseEntries[0]
+
     const kind = responseKind(status)
+
     const bodyField = responseBodyField(kind, responseModel)
+
     if (bodyField != null) {
       lines.push(`  export type Response = { status: ${status}; ${bodyField} }`)
     } else {
@@ -183,18 +248,25 @@ function generateClientFn(
     }
   } else {
     lines.push(`  export type Response =`)
+
     for (const [status, responseModel] of responseEntries) {
       const kind = responseKind(status)
+
       const bodyField = responseBodyField(kind, responseModel)
+
       if (bodyField != null) lines.push(`    | { status: ${status}; ${bodyField} }`)
       else lines.push(`    | { status: ${status} }`)
     }
   }
+
   lines.push("")
+
   lines.push(`}`)
+
   lines.push("")
 
   const hasRequired = hasParams || hasBody
+
   const reqParam = hasRequired ? `req: ${OperationName}Operation.Request` : `req?: ${OperationName}Operation.Request`
 
   const retType = `${OperationName}Operation.Response`
@@ -202,12 +274,16 @@ function generateClientFn(
   const pathExpr = operation.path.replace(/\{(\w+)\}/g, (_, name) => `\${encodeURIComponent(req.params.${name})}`)
 
   if (opDoc) lines.push(opDoc)
+
   lines.push(`export async function ${functionName}(${reqParam}): Promise<${retType}> {`)
+
   lines.push(`  const baseUrl = req?.baseUrl ?? ""`)
 
   if (hasQuery) {
     lines.push(`  const parts: string[] = []`)
+
     lines.push(`  const query = ${hasRequired ? "req.query" : "req?.query"}`)
+
     for (const [n, q] of Object.entries(operation.queries)) {
       if (q.model.kind === "array" || q.model.kind === "set") {
         lines.push(
@@ -217,25 +293,35 @@ function generateClientFn(
         lines.push(`  if (query?.${n} != null) parts.push("${n}=" + encodeURIComponent(query.${n}))`)
       }
     }
+
     lines.push(`  const qs = parts.length > 0 ? "?" + parts.join("&") : ""`)
+
     lines.push(`  const url = \`\${baseUrl}${pathExpr}\${qs}\``)
   } else {
     lines.push(`  const url = \`\${baseUrl}${pathExpr}\``)
   }
 
   lines.push("")
+
   lines.push(`  const res = await fetch(url, {`)
+
   lines.push(`    method: "${operation.method}",`)
+
   if (hasBody) {
     lines.push(`    headers: { "Content-Type": "application/json", ...req.headers },`)
+
     lines.push(`    body: JSON.stringify(req.body),`)
   } else {
     lines.push(`    headers: req?.headers,`)
   }
+
   lines.push(`  })`)
+
   lines.push(`  switch (res.status) {`)
+
   for (const ri of respInfo) {
     lines.push(`    case ${ri.status}: {`)
+
     if (ri.isStreamLike) {
       if (ri.kind === "binary") {
         lines.push(`      return { status: ${ri.status} as const, body: await res.blob() }`)
@@ -246,22 +332,31 @@ function generateClientFn(
       }
     } else if (ri.model && ri.schemaExpr) {
       lines.push(`      const body = ${lib.parse(ri.schemaExpr, "await res.json()")}`)
+
       lines.push(`      return { status: ${ri.status} as const, body }`)
     } else if (ri.model) {
       lines.push(`      return { status: ${ri.status} as const, body: await res.json() }`)
     } else {
       lines.push(`      return { status: ${ri.status} as const }`)
     }
+
     lines.push(`    }`)
   }
+
   lines.push(`    default: { throw new Error(\`${operation.method} ${operation.path} failed: \${res.status}\`) }`)
+
   lines.push(`  }`)
+
   lines.push(`}`)
 
   const body = lines.join("\n")
+
   const usesNs = new RegExp(`(^|[^A-Za-z0-9_])${lib.ns}\\.`).test(body)
+
   if (!usesNs) return body
+
   const sep = body.startsWith("import ") ? "\n" : "\n\n"
+
   return lib.importStmt + sep + body
 }
 
@@ -269,18 +364,26 @@ function generateClientIndex(operations: OperationDescriptor[]): string {
   const lines: string[] = []
 
   const groups = groupBy(operations, (operation) => operation.group)
+
   for (const [group, groupOps] of Object.entries(groups)) {
     const groupDesc = groupOps[0]?.groupDescription
+
     if (groupDesc) {
       lines.push(`/** @description ${groupDesc} */`)
     }
+
     lines.push(`// ── ${group} ──`)
+
     for (const operation of groupOps) {
       const n = camelCase(operation.id)
+
       const OperationName = pascalCase(operation.id)
+
       lines.push(`export { ${n} } from "./${camelCase(operation.group)}/${n}"`)
+
       lines.push(`export type { ${OperationName}Operation } from "./${camelCase(operation.group)}/${n}"`)
     }
+
     lines.push("")
   }
 

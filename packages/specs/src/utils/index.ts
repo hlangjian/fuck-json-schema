@@ -16,8 +16,10 @@ export function deepMergeAll<T extends object>(objs: T[]): T {
   const merge = (a: any, b: any, path: string[] = []): any => {
     for (const k in b) {
       const np = [...path, k]
+
       const av = a[k],
         bv = b[k]
+
       if (k in a) {
         if (Array.isArray(av) && Array.isArray(bv)) {
           a[k] = [...new Set([...av, ...bv])]
@@ -43,14 +45,18 @@ export function deepMergeAll<T extends object>(objs: T[]): T {
         a[k] = bv
       }
     }
+
     return a
   }
+
   return objs.reduce((acc, o) => merge(acc, o, []), {} as T)
 }
 
 export function extractPathParams<T extends string>(path: T): UnionToTuple<ExtractPathParams<T>> {
   const regex = /\{([^}]+)\}/g
+
   const params: string[] = []
+
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(path)) !== null) {

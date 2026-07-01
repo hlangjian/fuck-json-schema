@@ -57,7 +57,9 @@ describe("generateTsClient named-type imports for query params", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/listWarehouses.ts"]
+
     expect(opFile).toContain("WarehouseStatus")
+
     expect(opFile).toMatch(/import type \{[^}]*WarehouseStatus[^}]*\} from "\.\.\/models"/)
   })
 })
@@ -67,7 +69,9 @@ describe("generateTsClient request field access nesting", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/getWarehouse.ts"]
+
     expect(opFile).toContain("encodeURIComponent(req.params.id)")
+
     expect(opFile).not.toContain("encodeURIComponent(req.id)")
   })
 
@@ -75,7 +79,9 @@ describe("generateTsClient request field access nesting", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/listWarehouses.ts"]
+
     expect(opFile).toContain("req?.query")
+
     expect(opFile).not.toMatch(/encodeURIComponent\(req\.status\)/)
   })
 
@@ -83,7 +89,9 @@ describe("generateTsClient request field access nesting", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/listWarehouses.ts"]
+
     expect(opFile).toContain("for (const item of query.tags) parts.push(")
+
     expect(opFile).not.toContain("encodeURIComponent(query.tags)")
   })
 })
@@ -93,7 +101,9 @@ describe("generateTsClient validation namespace import", () => {
     const files = generateTsClient({ routers: [warehouses], validationLib: "valibot" })
 
     const opFile = files["warehouses/getWarehouse.ts"]
+
     expect(opFile).toContain("v.parse(")
+
     expect(opFile).toContain(`import * as v from "valibot"`)
   })
 
@@ -101,6 +111,7 @@ describe("generateTsClient validation namespace import", () => {
     const files = generateTsClient({ routers: [warehouses], validationLib: "zod" })
 
     const opFile = files["warehouses/getWarehouse.ts"]
+
     expect(opFile).not.toContain(`import { z } from "zod"`)
   })
 })
@@ -110,7 +121,9 @@ describe("generateTsClient returns Response union type", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/updateWarehouse.ts"]
+
     expect(opFile).toContain("Promise<UpdateWarehouseOperation.Response>")
+
     expect(opFile).not.toMatch(/Promise<Warehouse>/)
   })
 })
@@ -120,7 +133,9 @@ describe("generateTsClient imports schemas for all response statuses", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/updateWarehouse.ts"]
+
     expect(opFile).toContain("warehouseSchema")
+
     expect(opFile).toContain("errorResponseSchema")
   })
 })
@@ -130,8 +145,11 @@ describe("generateTsClient switch/case response handling", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/updateWarehouse.ts"]
+
     expect(opFile).toContain("switch (res.status)")
+
     expect(opFile).toContain("200 as const")
+
     expect(opFile).toContain("404 as const")
   })
 
@@ -139,7 +157,9 @@ describe("generateTsClient switch/case response handling", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/updateWarehouse.ts"]
+
     expect(opFile).toContain("throw new Error")
+
     expect(opFile).toContain("default:")
   })
 })

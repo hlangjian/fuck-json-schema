@@ -212,8 +212,11 @@ export function record<
   options: RecordModelOptions<T, O>,
 ): RecordModel<T, Exclude<keyof T & string, O>> {
   const { optional, ...rest } = options
+
   const allKeys = Object.keys(options.properties) as (keyof T & string)[]
+
   const required = allKeys.filter((k) => !(optional ?? []).includes(k as any))
+
   return { kind: "record", ...rest, required } as any
 }
 

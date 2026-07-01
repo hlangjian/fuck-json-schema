@@ -9,31 +9,49 @@ export interface ValidationLib {
   importStmt: string
 
   int32(): string
+
   float32(): string
+
   float64(): string
+
   boolean(): string
+
   string(): string
+
   datetime(): string
+
   date(): string
+
   duration(): string
+
   uuid(): string
+
   literal(value: unknown): string
+
   null(): string
+
   unknown(): string
 
   array(inner: string): string
+
   set(inner: string): string
+
   map(keyType: string, valueType: string): string
+
   enums(values: string[]): string
+
   union(members: string[]): string
+
   discriminatedUnion(key: string, members: string[]): string
 
   field(inner: string, opts?: FieldOptions): string
 
   parse(schemaExpr: string, dataExpr: string): string
+
   infer(schemaRefName: string): string
 
   envArray(inner: string): string
+
   envSet(inner: string): string
 }
 
@@ -66,7 +84,9 @@ export const zodLib: ValidationLib = {
 
   field: (inner, opts = {}) => {
     if (opts.defaultValue !== undefined) return `${inner}.default(${escape(opts.defaultValue)})`
+
     if (opts.optional) return `${inner}.optional()`
+
     return inner
   },
 
@@ -118,5 +138,6 @@ export const valibotLib: ValidationLib = {
 
 export function resolveLib(name: string): ValidationLib {
   if (name === "valibot") return valibotLib
+
   return zodLib
 }

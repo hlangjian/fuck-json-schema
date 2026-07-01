@@ -247,7 +247,9 @@ const warehousesRouter = router({
 })
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
 const outDir = resolve(__dirname, "..", "output")
+
 mkdirSync(outDir, { recursive: true })
 
 const serverFiles = generateDotnetServer({
@@ -259,13 +261,19 @@ const serverFiles = generateDotnetServer({
 })
 
 const serverOutDir = resolve(outDir, "dotnet-server")
+
 rmSync(serverOutDir, { recursive: true, force: true })
+
 mkdirSync(serverOutDir, { recursive: true })
+
 for (const [path, content] of Object.entries(serverFiles)) {
   const full = resolve(serverOutDir, path)
+
   mkdirSync(dirname(full), { recursive: true })
+
   writeFileSync(full, content, "utf-8")
 }
+
 console.log(`dotnet-server (${Object.keys(serverFiles).length} files)`)
 
 const clientFiles = generateDotnetClient({
@@ -276,11 +284,17 @@ const clientFiles = generateDotnetClient({
 })
 
 const clientOutDir = resolve(outDir, "dotnet-client")
+
 rmSync(clientOutDir, { recursive: true, force: true })
+
 mkdirSync(clientOutDir, { recursive: true })
+
 for (const [path, content] of Object.entries(clientFiles)) {
   const full = resolve(clientOutDir, path)
+
   mkdirSync(dirname(full), { recursive: true })
+
   writeFileSync(full, content, "utf-8")
 }
+
 console.log(`dotnet-client (${Object.keys(clientFiles).length} files)`)

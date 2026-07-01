@@ -100,7 +100,9 @@ export function parseReferences7(node: JsonSchema7): SchemaRefs7 {
 
   const ref = (key: string) => {
     if (key in anchors) return anchors[key]
+
     if (key in defs) return defs[key]
+
     throw Error(`cannot found ref ${key}`)
   }
 
@@ -142,6 +144,7 @@ export function parseNodeType7(schema: JsonSchema7): Map<JsonSchema7, SimpleType
   const parse = (node: JsonSchema7) => {
     if (typeof node === "boolean") {
       map.set(node, node ? [] : [])
+
       return
     }
 
@@ -172,6 +175,7 @@ export function parseNodeType7(schema: JsonSchema7): Map<JsonSchema7, SimpleType
       if (node[key])
         for (const subkey in node[key]) {
           const value = node[key][subkey]
+
           if (typeof value === "object" && value != null && !Array.isArray(value)) {
             parse(value as JsonSchema7)
           }
@@ -189,14 +193,18 @@ export interface JsonSchemaContext7 extends SchemaRefs7 {
 
 export function parseJsonSchemaContext7(schema: JsonSchema7): JsonSchemaContext7 {
   const { ref, get } = parseReferences7(schema)
+
   const map = parseNodeType7(schema)
+
   return {
     ref,
     get,
     type: (schema) => {
       const types = map.get(schema)
+
       if (types != null) return types
-      throw Error("cannot find schema: " + schema)
+
+      throw Error("cannot find schema: " + JSON.stringify(schema))
     },
   }
 }

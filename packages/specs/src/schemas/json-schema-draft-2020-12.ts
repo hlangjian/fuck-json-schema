@@ -138,13 +138,17 @@ export function parseReferences(node: JsonSchema): SchemaRefs {
 
   const ref = (key: string) => {
     if (key in anchors) return anchors[key]
+
     if (key in defs) return defs[key]
+
     throw Error(`cannot found ref ${key}`)
   }
 
   const dynamic = (key: string) => {
     if (key in dynamicAnchors) return dynamicAnchors[key]
+
     if (key in defs) return defs[key]
+
     throw Error(`cannot found dynamic ref ${key}`)
   }
 
@@ -165,7 +169,9 @@ export function parseReferences(node: JsonSchema): SchemaRefs {
 
     for (const [key, value] of Object.entries(node)) {
       const nextKey = prefix + "/" + key
+
       if (typeof key === "string" && key === "$anchor") anchors[nextKey] = node
+
       if (typeof key === "string" && key === "$dynamicAnchor") dynamicAnchors[nextKey] = node
 
       if (key === "$defs")
@@ -188,6 +194,7 @@ export function parseNodeType(schema: JsonSchema): Map<JsonSchema, SimpleType[]>
   const parse = (node: JsonSchema = {}) => {
     if (typeof node === "boolean") {
       map.set(node, node ? [] : [])
+
       return
     }
 
@@ -224,15 +231,19 @@ export interface JsonSchemaContext extends SchemaRefs {
 
 export function parseJsonSchemaContext(schema: JsonSchema): JsonSchemaContext {
   const { ref, dynamic, get } = parseReferences(schema)
+
   const map = parseNodeType(schema)
+
   return {
     ref,
     dynamic,
     get,
     type: (schema) => {
       const types = map.get(schema)
+
       if (types != null) return types
-      throw Error("cannot find schema: " + schema)
+
+      throw Error("cannot find schema: " + JSON.stringify(schema))
     },
   }
 }
