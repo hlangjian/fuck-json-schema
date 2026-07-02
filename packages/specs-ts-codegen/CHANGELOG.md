@@ -1,5 +1,14 @@
 # @huanglangjian/specs-ts-codegen
 
+## 0.16.2
+
+### Patch Changes
+
+- f8d266a: - specs: fix route() to merge auto-extracted path params with user-provided variables, preventing missing path params in generated client/server code
+  - specs-ts-codegen: fix config resolver functions to include discriminator field for discriminated union variants
+- Updated dependencies [f8d266a]
+  - @huanglangjian/specs@0.18.2
+
 ## 0.16.1
 
 ### Patch Changes
