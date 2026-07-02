@@ -53,7 +53,7 @@ describe("generateOpenapi", () => {
       method: "GET",
       path: "/warehouses",
       summary: "List",
-      responses: { 200: json({ body: array({ base: Warehouse }) }) },
+      responses: { Success: json({ status: 200,  body: array({ base: Warehouse }) }) },
     }),
   }
 
@@ -189,7 +189,7 @@ describe("generateOpenapi", () => {
         method: "GET",
         path: "/warehouses",
         summary: "List Warehouses",
-        responses: { 200: json({ body: array({ base: Warehouse }) }) },
+        responses: { Success: json({ status: 200,  body: array({ base: Warehouse }) }) },
       }),
     }
 
@@ -198,7 +198,7 @@ describe("generateOpenapi", () => {
         method: "GET",
         path: "/items",
         summary: "List Items",
-        responses: { 200: json({ body: array({ base: Warehouse }) }) },
+        responses: { Success: json({ status: 200,  body: array({ base: Warehouse }) }) },
       }),
     }
 
@@ -221,7 +221,7 @@ describe("generateOpenapi", () => {
         method: "GET",
         path: "/warehouses",
         summary: "List",
-        responses: { 200: json({ body: array({ base: Warehouse }) }) },
+        responses: { Success: json({ status: 200,  body: array({ base: Warehouse }) }) },
       }),
     }
 

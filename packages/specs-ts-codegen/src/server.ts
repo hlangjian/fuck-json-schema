@@ -125,8 +125,8 @@ function generateOpFile(
 
   if (hasBody) addNamedRef(operation.requestModel!)
 
-  for (const responseModel of Object.values(operation.responses)) {
-    if (responseModel != null) addNamedRef(responseModel)
+  for (const r of operation.responses) {
+    if (r.model != null) addNamedRef(r.model)
   }
 
   for (const v of Object.values(operation.pathVariables)) addNamedRef(v.model)
@@ -265,9 +265,7 @@ function generateOpFile(
 
   lines.push("")
 
-  const responseEntries = Object.entries(operation.responses)
-
-  const responseKind = (status: string) => operation.responseKinds[Number(status)] ?? "json-response"
+  const responseEntries = operation.responses
 
   const responseBodyField = (kind: string, model: Models | null) => {
     if (model == null) {
@@ -286,28 +284,24 @@ function generateOpFile(
   }
 
   if (responseEntries.length === 1) {
-    const [status, responseModel] = responseEntries[0]
+    const r = responseEntries[0]
 
-    const kind = responseKind(status)
-
-    const bodyField = responseBodyField(kind, responseModel)
+    const bodyField = responseBodyField(r.kind, r.model)
 
     if (bodyField != null) {
-      lines.push(`  export type Response = { status: ${status}; ${bodyField} }`)
+      lines.push(`  export type Response = { status: ${r.status}; ${bodyField} }`)
     } else {
-      lines.push(`  export type Response = { status: ${status} }`)
+      lines.push(`  export type Response = { status: ${r.status} }`)
     }
   } else {
     lines.push(`  export type Response =`)
 
-    const parts = responseEntries.map(([status, responseModel]) => {
-      const kind = responseKind(status)
+    const parts = responseEntries.map((r) => {
+      const bodyField = responseBodyField(r.kind, r.model)
 
-      const bodyField = responseBodyField(kind, responseModel)
+      if (bodyField != null) return `    | { status: ${r.status}; ${bodyField} }`
 
-      if (bodyField != null) return `    | { status: ${status}; ${bodyField} }`
-
-      return `    | { status: ${status} }`
+      return `    | { status: ${r.status} }`
     })
 
     lines.push(parts.join("\n"))
@@ -401,29 +395,27 @@ function generateOpFile(
 
   lines.push(`      switch (result.status) {`)
 
-  for (const [status, responseModel] of Object.entries(operation.responses)) {
-    const kind = operation.responseKinds[Number(status)] ?? "json-response"
-
-    if (responseModel != null) {
-      if (kind === "json-response") {
+  for (const r of operation.responses) {
+    if (r.model != null) {
+      if (r.kind === "json-response") {
         lines.push(
-          `        case ${status}: return new Response(JSON.stringify(result.body), { status: ${status}, headers: { "Content-Type": "application/json" } })`,
+          `        case ${r.status}: return new Response(JSON.stringify(result.body), { status: ${r.status}, headers: { "Content-Type": "application/json" } })`,
         )
-      } else if (kind === "binary") {
+      } else if (r.kind === "binary") {
         lines.push(
-          `        case ${status}: return new Response(result.body, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`,
+          `        case ${r.status}: return new Response(result.body, { status: ${r.status}, headers: { "Content-Type": "${contentTypeForKind(r.kind)}" } })`,
         )
       } else {
         lines.push(
-          `        case ${status}: return new Response(result.stream, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`,
+          `        case ${r.status}: return new Response(result.stream, { status: ${r.status}, headers: { "Content-Type": "${contentTypeForKind(r.kind)}" } })`,
         )
       }
-    } else if (kind === "binary") {
+    } else if (r.kind === "binary") {
       lines.push(
-        `        case ${status}: return new Response(result.body, { status: ${status}, headers: { "Content-Type": "${contentTypeForKind(kind)}" } })`,
+        `        case ${r.status}: return new Response(result.body, { status: ${r.status}, headers: { "Content-Type": "${contentTypeForKind(r.kind)}" } })`,
       )
     } else {
-      lines.push(`        case ${status}: return new Response(null, { status: ${status} })`)
+      lines.push(`        case ${r.status}: return new Response(null, { status: ${r.status} })`)
     }
   }
 

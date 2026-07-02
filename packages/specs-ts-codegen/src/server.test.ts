@@ -36,7 +36,7 @@ const warehouses = router({
       method: "GET",
       path: "/warehouses/{id}",
       variables: { id: int32() },
-      responses: { 200: json({ body: Warehouse }) },
+      responses: { Success: json({ status: 200,  body: Warehouse }) },
     }),
     listWarehouses: route({
       method: "GET",
@@ -46,18 +46,18 @@ const warehouses = router({
         properties: { status: WarehouseStatus, sort: SortOrder, tags: array({ base: WarehouseStatus }) },
         optional: ["status", "sort", "tags"],
       }),
-      responses: { 200: json({ body: array({ base: Warehouse }) }) },
+      responses: { Success: json({ status: 200,  body: array({ base: Warehouse }) }) },
     }),
     createWarehouse: route({
       method: "POST",
       path: "/warehouses",
       body: CreateWarehouse,
-      responses: { 201: json({ body: Warehouse }) },
+      responses: { Created: json({ status: 201,  body: Warehouse }) },
     }),
     ping: route({
       method: "GET",
       path: "/ping",
-      responses: { 200: json({}) },
+      responses: { Success: json({ status: 200, }) },
     }),
   },
 })

@@ -137,15 +137,15 @@ export function collectOperations(routers: RouterModel[]): OperationDescriptor[]
         }
       }
 
-      const responses: Record<number, Models | null> = {}
+      const responses: { key: string; status: number; model: Models | null; kind: string }[] = []
 
-      const responseKinds: Record<number, string> = {}
-
-      for (const [status, resp] of Object.entries(route.responses)) {
-        responses[Number(status)] =
-          "body" in resp && resp.body != null ? (resp.body as Models) : null
-
-        responseKinds[Number(status)] = resp.kind
+      for (const [key, resp] of Object.entries(route.responses)) {
+        responses.push({
+          key,
+          status: resp.status,
+          model: "body" in resp && resp.body != null ? (resp.body as Models) : null,
+          kind: resp.kind,
+        })
       }
 
       return {
@@ -160,7 +160,6 @@ export function collectOperations(routers: RouterModel[]): OperationDescriptor[]
         deprecated: route.deprecated,
         requestModel: route.body ?? null,
         responses,
-        responseKinds,
         pathVariables,
         queries,
         headers,
@@ -203,7 +202,7 @@ function collectAll(ops: OperationDescriptor[]): Models[] {
   for (const op of ops) {
     add(op.requestModel)
 
-    for (const v of Object.values(op.responses)) add(v)
+    for (const v of op.responses) add(v.model)
 
     for (const v of Object.values(op.pathVariables)) add(v.model)
 

@@ -162,7 +162,7 @@ export interface ResponsesObject {
 }
 
 export interface ResponseObject {
-  description: string
+  description?: string
   headers?: { [key: string]: HeaderObject | ReferenceObject }
   content?: { [key: string]: MediaTypeObject }
   links?: { [key: string]: LinkObject | ReferenceObject }

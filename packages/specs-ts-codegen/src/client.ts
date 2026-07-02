@@ -96,8 +96,8 @@ function generateClientFn(
 
   if (hasBody) addNamedRef(operation.requestModel!)
 
-  for (const responseModel of Object.values(operation.responses)) {
-    if (responseModel != null) addNamedRef(responseModel)
+  for (const r of operation.responses) {
+    if (r.model != null) addNamedRef(r.model)
   }
 
   for (const v of Object.values(operation.pathVariables)) addNamedRef(v.model)
@@ -106,22 +106,16 @@ function generateClientFn(
 
   for (const v of Object.values(operation.headers)) addNamedRef(v.model)
 
-  const responseEntries = Object.entries(operation.responses) as [string, Models | null][]
-
-  const responseKind = (status: string): string => operation.responseKinds[Number(status)] ?? "json-response"
+  const responseEntries = operation.responses
 
   const respInfo: { status: number; model: Models | null; kind: string; isStreamLike: boolean; schemaExpr: string | null }[] = []
 
-  for (const [s, model] of responseEntries) {
-    const status = Number(s)
+  for (const r of responseEntries) {
+    const isStreamLike = r.kind === "stream-response" || r.kind === "sse-response" || r.kind === "binary"
 
-    const kind = responseKind(s)
+    const schemaExpr = r.model && !isStreamLike ? resolveSchemaExpr(r.model, schemaMap, lib) : null
 
-    const isStreamLike = kind === "stream-response" || kind === "sse-response" || kind === "binary"
-
-    const schemaExpr = model && !isStreamLike ? resolveSchemaExpr(model, schemaMap, lib) : null
-
-    respInfo.push({ status, model, kind, isStreamLike, schemaExpr })
+    respInfo.push({ status: r.status, model: r.model, kind: r.kind, isStreamLike, schemaExpr })
   }
 
   const schemaImports: string[] = []
@@ -235,27 +229,23 @@ function generateClientFn(
   }
 
   if (responseEntries.length === 1) {
-    const [status, responseModel] = responseEntries[0]
+    const r = responseEntries[0]
 
-    const kind = responseKind(status)
-
-    const bodyField = responseBodyField(kind, responseModel)
+    const bodyField = responseBodyField(r.kind, r.model)
 
     if (bodyField != null) {
-      lines.push(`  export type Response = { status: ${status}; ${bodyField} }`)
+      lines.push(`  export type Response = { status: ${r.status}; ${bodyField} }`)
     } else {
-      lines.push(`  export type Response = { status: ${status} }`)
+      lines.push(`  export type Response = { status: ${r.status} }`)
     }
   } else {
     lines.push(`  export type Response =`)
 
-    for (const [status, responseModel] of responseEntries) {
-      const kind = responseKind(status)
+    for (const r of responseEntries) {
+      const bodyField = responseBodyField(r.kind, r.model)
 
-      const bodyField = responseBodyField(kind, responseModel)
-
-      if (bodyField != null) lines.push(`    | { status: ${status}; ${bodyField} }`)
-      else lines.push(`    | { status: ${status} }`)
+      if (bodyField != null) lines.push(`    | { status: ${r.status}; ${bodyField} }`)
+      else lines.push(`    | { status: ${r.status} }`)
     }
   }
 

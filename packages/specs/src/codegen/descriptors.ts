@@ -7,7 +7,7 @@ export type AnyRouteModel = RouteModel<
   Models,
   RecordModel<Record<string, Models>, string>,
   RecordModel<Record<string, Models>, string>,
-  Record<number, any>
+  Record<string, any>
 >
 
 export interface CollectOptions {
@@ -64,8 +64,7 @@ export interface OperationDescriptor {
   deprecated?: boolean
   tags?: string[]
   requestModel: Models | null
-  responses: Record<number, Models | null>
-  responseKinds: Record<number, string>
+  responses: { key: string; status: number; model: Models | null; kind: string }[]
   pathVariables: Record<string, { model: Models; name: string }>
   queries: Record<string, { model: Models; name: string; required: boolean }>
   headers: Record<string, { model: Models; name: string; required: boolean }>

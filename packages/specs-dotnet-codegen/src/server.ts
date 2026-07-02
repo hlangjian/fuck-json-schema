@@ -161,13 +161,11 @@ function generateEndpointFile(
 
   lines.push(`{`)
 
-  for (const [status, responseModel] of Object.entries(operation.responses)) {
-    const kind = operation.responseKinds[Number(status)] ?? "json-response"
+  for (const r of operation.responses) {
+    const variantName = statusCodeToPascalCase(r.status, r.kind, r.model)
 
-    const variantName = statusCodeToPascalCase(Number(status), kind, responseModel, operation)
-
-    if (responseModel != null) {
-      lines.push(`    public sealed record ${variantName}(${toDotnetType(responseModel, schemaMap, identifier)} Body) : ${responseType};`)
+    if (r.model != null) {
+      lines.push(`    public sealed record ${variantName}(${toDotnetType(r.model, schemaMap, identifier)} Body) : ${responseType};`)
     } else {
       lines.push(`    public sealed record ${variantName} : ${responseType};`)
     }
@@ -249,14 +247,12 @@ function generateEndpointFile(
 
   lines.push(`            {`)
 
-  for (const [status, responseModel] of Object.entries(operation.responses)) {
-    const kind = operation.responseKinds[Number(status)] ?? "json-response"
+  for (const r of operation.responses) {
+    const variantName = statusCodeToPascalCase(r.status, r.kind, r.model)
 
-    const variantName = statusCodeToPascalCase(Number(status), kind, responseModel, operation)
+    const methodName = statusCodeToMethod(r.status)
 
-    const methodName = statusCodeToMethod(Number(status))
-
-    if (responseModel != null) {
+    if (r.model != null) {
       lines.push(`                ${responseType}.${variantName} b => TypedResults.${methodName}(b.Body),`)
     } else {
       lines.push(`                ${responseType}.${variantName} => TypedResults.${methodName}(),`)
@@ -280,7 +276,6 @@ function statusCodeToPascalCase(
   status: number,
   kind: string,
   responseModel: Models | null,
-  _operation: OperationDescriptor,
 ): string {
   const httpName = statusCodeToMethod(status)
 

@@ -32,7 +32,7 @@ type AnyRouteModel = RouteModel<
   Models,
   RecordModel<Record<string, Models>, string>,
   RecordModel<Record<string, Models>, string>,
-  Record<number, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>
+  Record<string, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>
 >
 
 type AnyResponseModel = ResponseModel<Models, RecordModel<Record<string, Models>, string>>
@@ -325,33 +325,57 @@ function generateMediaType(model: Models, registry: SchemaRegistry, toJsonSchema
 }
 
 function generateResponses(
-  responses: Record<number, AnyResponseModel>,
+  responses: AnyRouteModel["responses"],
   registry: SchemaRegistry,
   toJsonSchema?: ToJsonSchema,
 ): Record<string, ResponseObject> {
-  return Object.entries(responses).reduce<Record<string, ResponseObject>>(
-    (acc, [status, response]) => ({
-      ...acc,
-      [status]: generateResponseObject(response, registry, toJsonSchema),
-    }),
-    {} as Record<string, ResponseObject>,
-  )
+  const grouped = new Map<number, { resp: AnyResponseModel; bodyModels: Models[] }>()
+
+  for (const response of Object.values(responses)) {
+    const existing = grouped.get(response.status)
+
+    if (existing) {
+      if (response.body != null) existing.bodyModels.push(response.body)
+    } else {
+      grouped.set(response.status, { resp: response, bodyModels: response.body != null ? [response.body] : [] })
+    }
+  }
+
+  const result: Record<string, ResponseObject> = {}
+
+  for (const [statusStr, { resp, bodyModels }] of grouped) {
+    result[String(statusStr)] = {
+      ...(bodyModels.length > 1
+        ? {}
+        : {
+          headers:
+            resp.kind !== "binary" && resp.headers
+              ? generateResponseHeaders(resp.headers, registry, toJsonSchema)
+              : undefined,
+        }),
+      content: bodyModels.length > 1
+        ? generateMergedResponseContent(resp, bodyModels, registry, toJsonSchema)
+        : generateResponseContent(resp, registry, toJsonSchema),
+    }
+  }
+
+  return result
 }
 
-function generateResponseObject(response: AnyResponseModel, registry: SchemaRegistry, toJsonSchema?: ToJsonSchema): ResponseObject {
-  const description = response.summary ?? ""
+function generateMergedResponseContent(
+  resp: AnyResponseModel,
+  bodyModels: Models[],
+  registry: SchemaRegistry,
+  toJsonSchema?: ToJsonSchema,
+): Record<string, MediaTypeObject> | undefined {
+  if (bodyModels.length === 0) return undefined
 
-  const headers =
-    response.kind !== "binary" && response.headers
-      ? generateResponseHeaders(response.headers, registry, toJsonSchema)
-      : undefined
-
-  const content = generateResponseContent(response, registry, toJsonSchema)
+  const contentType = resp.contentType ?? "application/json"
 
   return {
-    description,
-    headers,
-    content,
+    [contentType]: {
+      schema: { oneOf: bodyModels.map((m) => getSchema(m, registry, toJsonSchema)) },
+    },
   }
 }
 

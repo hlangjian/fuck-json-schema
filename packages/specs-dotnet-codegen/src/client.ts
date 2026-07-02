@@ -110,13 +110,11 @@ function generateClientMethodFile(
 
   lines.push(`{`)
 
-  for (const [status, responseModel] of Object.entries(operation.responses)) {
-    const kind = operation.responseKinds[Number(status)] ?? "json-response"
+  for (const r of operation.responses) {
+    const variantName = clientResponseVariantName(r.status, r.kind, r.model)
 
-    const variantName = clientResponseVariantName(Number(status), kind, responseModel)
-
-    if (responseModel != null) {
-      lines.push(`    public sealed record ${variantName}(${toDotnetType(responseModel, schemaMap, identifier)} Body) : ${responseType};`)
+    if (r.model != null) {
+      lines.push(`    public sealed record ${variantName}(${toDotnetType(r.model, schemaMap, identifier)} Body) : ${responseType};`)
     } else {
       lines.push(`    public sealed record ${variantName} : ${responseType};`)
     }
@@ -204,21 +202,19 @@ function generateClientMethodFile(
 
   lines.push(`        {`)
 
-  for (const [status, responseModel] of Object.entries(operation.responses)) {
-    const kind = operation.responseKinds[Number(status)] ?? "json-response"
+  for (const r of operation.responses) {
+    const variantName = clientResponseVariantName(r.status, r.kind, r.model)
 
-    const variantName = clientResponseVariantName(Number(status), kind, responseModel)
+    const statusName = httpStatusName(r.status)
 
-    const statusName = httpStatusName(Number(status))
-
-    if (kind === "binary") {
-      if (responseModel != null) {
+    if (r.kind === "binary") {
+      if (r.model != null) {
         lines.push(`            System.Net.HttpStatusCode.${statusName} => new ${responseType}.${variantName}(await response.Content.ReadAsByteArrayAsync(ct)),`)
       } else {
         lines.push(`            System.Net.HttpStatusCode.${statusName} => new ${responseType}.${variantName}(),`)
       }
-    } else if (responseModel != null) {
-      const bodyType = toDotnetType(responseModel, schemaMap, identifier)
+    } else if (r.model != null) {
+      const bodyType = toDotnetType(r.model, schemaMap, identifier)
 
       lines.push(`            System.Net.HttpStatusCode.${statusName} => new ${responseType}.${variantName}(await response.Content.ReadFromJsonAsync<${bodyType}>(ct: ct)!),`)
     } else {

@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { binary as binaryResponse, json, route, router } from "@huanglangjian/specs"
+import { binary, json, route, router } from "@huanglangjian/specs"
 import { array, datetime, enums, int32, record, set, string, union } from "@huanglangjian/specs"
 
 import { generateDotnetClient } from "./client"
@@ -151,7 +151,7 @@ const warehousesRouter = router({
       path: "/warehouses",
       summary: "获取仓库列表",
       description: "返回所有仓库的列表",
-      responses: { 200: json({ summary: "仓库列表", body: array({ base: Warehouse }) }) },
+      responses: { Success: json({ status: 200,  body: array({ base: Warehouse }) }) },
     }),
     getWarehouse: route({
       method: "GET",
@@ -160,8 +160,8 @@ const warehousesRouter = router({
       description: "根据ID获取指定仓库",
       variables: { id: int32({ description: "仓库ID" }) },
       responses: {
-        200: json({ summary: "仓库详情", body: Warehouse }),
-        404: json({ summary: "仓库不存在", body: ErrorResponse }),
+        Success: json({ status: 200,  body: Warehouse }),
+        NotFound: json({ status: 404,  body: ErrorResponse }),
       },
     }),
     createWarehouse: route({
@@ -171,8 +171,8 @@ const warehousesRouter = router({
       description: "创建一个新仓库",
       body: CreateWarehouse,
       responses: {
-        201: json({ summary: "创建成功", body: Warehouse }),
-        400: json({ summary: "请求参数错误", body: ErrorResponse }),
+        Created: json({ status: 201,  body: Warehouse }),
+        BadRequest: json({ status: 400,  body: ErrorResponse }),
       },
     }),
     updateWarehouse: route({
@@ -183,8 +183,8 @@ const warehousesRouter = router({
       variables: { id: int32({ description: "仓库ID" }) },
       body: UpdateWarehouse,
       responses: {
-        200: json({ summary: "更新成功", body: Warehouse }),
-        404: json({ summary: "仓库不存在", body: ErrorResponse }),
+        Success: json({ status: 200,  body: Warehouse }),
+        NotFound: json({ status: 404,  body: ErrorResponse }),
       },
     }),
     deleteWarehouse: route({
@@ -194,8 +194,8 @@ const warehousesRouter = router({
       description: "删除指定仓库",
       variables: { id: int32({ description: "仓库ID" }) },
       responses: {
-        204: json({ summary: "删除成功" }),
-        404: json({ summary: "仓库不存在", body: ErrorResponse }),
+        NoContent: json({ status: 204,  summary: "删除成功" }),
+        NotFound: json({ status: 404,  body: ErrorResponse }),
       },
     }),
     exportWarehouses: route({
@@ -204,7 +204,7 @@ const warehousesRouter = router({
       summary: "导出仓库数据",
       description: "以二进制格式导出所有仓库数据",
       deprecated: true,
-      responses: { 200: binaryResponse({ summary: "导出文件" }) },
+      responses: { Success: binary({ status: 200,  summary: "导出文件" }) },
     }),
     searchWarehouses: route({
       method: "GET",
@@ -228,7 +228,7 @@ const warehousesRouter = router({
         },
         optional: ["x-trace-id"],
       }),
-      responses: { 200: json({ summary: "搜索结果", body: array({ base: Warehouse }) }) },
+      responses: { Success: json({ status: 200,  body: array({ base: Warehouse }) }) },
     }),
     getOldWarehouse: route({
       method: "GET",
@@ -238,8 +238,8 @@ const warehousesRouter = router({
       deprecated: true,
       variables: { id: int32({ description: "仓库ID" }) },
       responses: {
-        200: json({ summary: "旧仓库详情", body: OldWarehouse }),
-        404: json({ summary: "仓库不存在", body: ErrorResponse }),
+        Success: json({ status: 200,  body: OldWarehouse }),
+        NotFound: json({ status: 404,  body: ErrorResponse }),
       },
     }),
   },

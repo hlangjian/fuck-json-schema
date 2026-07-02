@@ -41,7 +41,7 @@ export interface RouterModel {
       Models,
       RecordModel<Record<string, Models>, string>,
       RecordModel<Record<string, Models>, string>,
-      Record<number, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>
+      Record<string, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>
     >
   >
 }
@@ -52,7 +52,7 @@ export interface RouteModel<
   Body extends Models,
   Queries extends RecordModel<Record<string, Models>, string>,
   Headers extends RecordModel<Record<string, Models>, string>,
-  Responses extends Record<number, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
+  Responses extends Record<string, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
 > {
   kind: "route"
   method: HttpMethod
@@ -77,32 +77,32 @@ export type ResponseModel<Body extends Models, Headers extends RecordModel<Recor
 
 export interface JsonResponseModel<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>> {
   kind: "json-response"
+  status: number
   contentType?: PlainTextLikeContentType | JsonLikeContentType
-  summary?: string
   body?: Body
   headers?: Headers
 }
 
 export interface StreamResponseModel<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>> {
   kind: "stream-response"
+  status: number
   contentType?: JsonStreamLikeContentType
-  summary?: string
   body?: Body
   headers?: Headers
 }
 
 export interface SSEResponseModel<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>> {
   kind: "sse-response"
+  status: number
   contentType?: PlainTextStreamLikeContentType
-  summary?: string
   body?: Body
   headers?: Headers
 }
 
 export interface BinaryResponseModel<Headers extends RecordModel<Record<string, Models>, string>> {
   kind: "binary"
+  status: number
   contentType?: BinaryLikeContentType
-  summary?: string
   headers?: Headers
 }
 
@@ -112,7 +112,7 @@ export interface RouteOptions<
   Body extends Models,
   Queries extends RecordModel<Record<string, Models>, string>,
   Headers extends RecordModel<Record<string, Models>, string>,
-  Responses extends Record<number, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
+  Responses extends Record<string, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
 > extends Omit<RouteModel<string, Variables, Body, Queries, Headers, Responses>, "kind"> {}
 
 export function route<
@@ -121,7 +121,7 @@ export function route<
   Body extends Models,
   Queries extends RecordModel<Record<string, Models>, string>,
   Headers extends RecordModel<Record<string, Models>, string>,
-  Responses extends Record<number, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
+  Responses extends Record<string, ResponseModel<Models, RecordModel<Record<string, Models>, string>>>,
 >(
   options: RouteOptions<Path, Variables, Body, Queries, Headers, Responses>,
 ): RouteModel<Path, Variables, Body, Queries, Headers, Responses> {
@@ -135,38 +135,38 @@ export function route<
 }
 
 export interface ResponseOptions<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>> {
+  status: number
   contentType?: HttpContentType | (string & {})
-  summary?: string
   body?: Body
   headers?: Headers
 }
 
 export function json<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>>(
-  options?: ResponseOptions<Body, Headers>,
+  options: ResponseOptions<Body, Headers>,
 ): JsonResponseModel<Body, Headers> {
   return { kind: "json-response", ...options }
 }
 
 export function jsonStream<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>>(
-  options?: ResponseOptions<Body, Headers>,
+  options: ResponseOptions<Body, Headers>,
 ): StreamResponseModel<Body, Headers> {
   return { kind: "stream-response", ...options }
 }
 
 export function sseStream<Body extends Models, Headers extends RecordModel<Record<string, Models>, string>>(
-  options?: ResponseOptions<Body, Headers>,
+  options: ResponseOptions<Body, Headers>,
 ): SSEResponseModel<Body, Headers> {
   return { kind: "sse-response", ...options }
 }
 
 export interface BinaryResponseOptions<Headers extends RecordModel<Record<string, Models>, string>> {
+  status: number
   contentType?: BinaryLikeContentType
-  summary?: string
   headers?: Headers
 }
 
 export function binary<Headers extends RecordModel<Record<string, Models>, string>>(
-  options?: BinaryResponseOptions<Headers>,
+  options: BinaryResponseOptions<Headers>,
 ): BinaryResponseModel<Headers> {
   return { kind: "binary", ...options }
 }
