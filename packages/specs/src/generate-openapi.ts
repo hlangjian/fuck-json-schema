@@ -247,7 +247,7 @@ function generateOperation(fr: FlatRoute, registry: SchemaRegistry, toJsonSchema
 
   return {
     operationId: `${fr.group}.${fr.operationKey}`,
-    summary: fr.route.summary,
+    summary: fr.route.summary ?? fr.operationKey,
     description: fr.route.description,
     tags,
     parameters: generateParameters(fr.route, registry, toJsonSchema),
