@@ -1,5 +1,17 @@
 # @huanglangjian/specs
 
+## 0.18.0
+
+### Minor Changes
+
+- c7bb135: feat!: route responses keyed by name, status required, summary removed
+
+  - Route responses changed from `{ [statusCode]: ResponseModel }` to `{ [responseKey]: ResponseModel }`
+  - `json()` / `binary()` / `jsonStream()` / `sseStream()` now require `status: number`
+  - Removed `summary` from all ResponseModel types (redundant with body model descriptions)
+  - Same-status responses auto-merge into `oneOf` in OpenAPI output
+  - Response type names in codegen use the response key instead of status codes
+
 ## 0.17.0
 
 ### Minor Changes
