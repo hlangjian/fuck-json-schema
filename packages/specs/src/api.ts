@@ -125,11 +125,13 @@ export function route<
 >(
   options: RouteOptions<Path, Variables, Body, Queries, Headers, Responses>,
 ): RouteModel<Path, Variables, Body, Queries, Headers, Responses> {
-  const variables =
-    options.variables ??
-    (Object.fromEntries(
-      extractPathParams(options.path).map((name) => [name, string()]),
-    ) as Variables)
+  const autoVariables = Object.fromEntries(
+    extractPathParams(options.path).map((name) => [name, string()]),
+  ) as Record<string, SimpleType>
+
+  const variables = options.variables
+    ? ({ ...autoVariables, ...options.variables } as Variables)
+    : (autoVariables as Variables)
 
   return { kind: "route", ...options, variables } as RouteModel<Path, Variables, Body, Queries, Headers, Responses>
 }

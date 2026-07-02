@@ -528,6 +528,8 @@ interface VariantNode {
   envVars: EnvVar[]
   fields: FieldNode[]
   unionSwitches: UnionSwitchNode[]
+  discriminator: string
+  discrimValue: string
 }
 
 interface UnionSwitchNode {
@@ -632,6 +634,8 @@ function emitVariantResolvers(v: VariantNode, out: string[], lib: ValidationLib)
   out.push("")
 
   out.push(`  return {`)
+
+  out.push(`    ${v.discriminator}: ${v.discrimValue} as const,`)
 
   for (const f of v.fields) {
     out.push(`    ${f.name}: ${emitFieldExpr(f, "e", "env")},`)
@@ -784,6 +788,8 @@ function collectLevel(
             envVars: child.envVars,
             fields: child.fields,
             unionSwitches: child.unionSwitches,
+            discriminator: model.discriminator as string,
+            discrimValue: JSON.stringify(JSON.stringify(vKey)),
           })
         }
 
