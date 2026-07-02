@@ -10,7 +10,7 @@ import { generateConfigJsonSchema } from "./generate-jsonschema"
 import { apikey, openIdConnect } from "./security"
 import type { SecurityPolicyModel } from "./security"
 import { deployOpenIdConnect } from "./deployment"
-import { array, datetime, enums, int32, literal, record, set, string, union } from "./types"
+import { array, datetime, enums, int32, record, set, string, union } from "./types"
 
 const Warehouse = record({
   id: "Warehouse",
@@ -71,7 +71,6 @@ const OldWarehouse = record({
 const PostgresConfig = record({
   id: "PostgresConfig",
   properties: {
-    type: literal("postgres"),
     host: string({ description: "PostgreSQL 主机地址" }),
     port: int32({ description: "PostgreSQL 端口" }),
     username: string({ description: "数据库用户名" }),
@@ -82,11 +81,11 @@ const PostgresConfig = record({
       variants: {
         password: record({
           id: "AuthPassword",
-          properties: { method: literal("password"), username: string(), password: string() },
+          properties: { username: string(), password: string() },
         }),
         cert: record({
           id: "AuthCert",
-          properties: { method: literal("cert"), certFile: string(), keyFile: string() },
+          properties: { certFile: string(), keyFile: string() },
         }),
       },
     }),
@@ -96,7 +95,6 @@ const PostgresConfig = record({
 const SqliteConfig = record({
   id: "SqliteConfig",
   properties: {
-    type: literal("sqlite"),
     name: string({ description: "SQLite 数据库文件名" }),
   },
 })
@@ -125,12 +123,12 @@ const ServerConfig = record({
       variants: {
         redis: record({
           id: "RedisCache",
-          properties: { type: literal("redis"), url: string(), prefix: string() },
+          properties: { url: string(), prefix: string() },
           optional: ["prefix"],
         }),
         memory: record({
           id: "MemoryCache",
-          properties: { type: literal("memory"), maxSize: int32(), ttl: int32() },
+          properties: { maxSize: int32(), ttl: int32() },
           optional: ["ttl"],
         }),
       },

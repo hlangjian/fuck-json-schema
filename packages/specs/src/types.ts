@@ -72,29 +72,20 @@ export interface UnionModel<
   id: string
 }
 
+export type InferUnionModel<
+  K extends string,
+  Key extends string,
+  V extends RecordModel<Record<string, Models>, string>,
+> = InferModel<V> & { [P in K]: Key }
+
 export type InferUnion<
   K extends string,
   Variants extends Record<string, RecordModel<Record<string, Models>, string>>,
 > = string extends K
   ? any
   : {
-      [key in keyof Variants]: StandardTypedV1.InferOutput<NonNullable<Variants[key]["schema"]>>
+      [key in keyof Variants]: InferUnionModel<K, key & string, Variants[key]>
     }[keyof Variants]
-
-export type ValidateUnion<
-  K extends string,
-  V extends Record<string, RecordModel<Record<string, Models>, string>>,
-> = {
-  [Key in keyof V as V[Key] extends RecordModel<infer Properties, infer Required>
-    ? K extends keyof Properties
-      ? Properties[K] extends LiteralModel<Key & string>
-        ? K extends Required
-          ? never
-          : `[union] variant "${Key & string}" → discriminator "${K}" 不在 required 中`
-        : `[union] variant "${Key & string}" → "${K}" 必须为 literal("${Key & string}")`
-      : `[union] variant "${Key & string}" → 缺少 discriminator "${K}"`
-    : never]: string
-}
 
 export interface LiteralModel<T extends string | number | boolean> extends BasicModel<T> {
   kind: "literal"
@@ -208,12 +199,30 @@ export function record<
 }
 
 export function union<
-  K extends string,
-  Variants extends Record<string, RecordModel<Record<string, Models>, string>>,
+  V extends Record<string, RecordModel<Record<string, Models>, string>>,
+  const K extends string = "type",
 >(
-  options: Omit<UnionModel<K, Variants>, "kind"> & ValidateUnion<K, Variants>,
-): UnionModel<K, Variants> {
-  return { kind: "union", ...options }
+  options: Omit<UnionModel<K, V>, "kind" | "discriminator"> & { discriminator?: K },
+): UnionModel<K, V> {
+  const discriminator = (options.discriminator ?? "type") as K
+
+  for (const [key, variant] of Object.entries(options.variants) as [string, any][]) {
+    if (discriminator in variant.properties) {
+      if (options.discriminator == null) {
+        throw new Error(
+          `[union] default discriminator "type" conflicts with property "type" ` +
+          `in variant "${key}". Provide a custom discriminator, e.g. discriminator: "kind"`,
+        )
+      }
+
+      throw new Error(
+        `[union] discriminator "${String(discriminator)}" conflicts with ` +
+        `existing property "${String(discriminator)}" in variant "${key}"`,
+      )
+    }
+  }
+
+  return { kind: "union", ...options, discriminator } as any
 }
 
 export function literal<const T extends string | boolean | number>(value: T): LiteralModel<T> {

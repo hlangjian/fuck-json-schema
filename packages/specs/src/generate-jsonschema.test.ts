@@ -93,7 +93,7 @@ describe("generateConfigJsonSchema", () => {
 
     const DbConfig = union({
       id: "MyDbConfig",
-      discriminator: "type",
+      discriminator: "kind",
       variants: { pg: Pg as any, sqlite: Sqlite as any },
     })
 

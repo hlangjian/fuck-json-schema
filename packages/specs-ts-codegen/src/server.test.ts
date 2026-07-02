@@ -4,7 +4,6 @@ import {
   enums,
   int32,
   json,
-  literal,
   record,
   route,
   router,
@@ -75,16 +74,16 @@ const ServerConfig = record({
       id: "DatabaseConfig",
       discriminator: "type",
       variants: {
-        postgres: record({ id: "PostgresConfig", properties: { type: literal("postgres"), host: string() } }),
-        sqlite: record({ id: "SqliteConfig", properties: { type: literal("sqlite"), name: string() } }),
+        postgres: record({ id: "PostgresConfig", properties: { host: string() } }),
+        sqlite: record({ id: "SqliteConfig", properties: { name: string() } }),
       },
     }),
     cache: union({
       id: "CacheConfig",
       discriminator: "type",
       variants: {
-        redis: record({ id: "RedisCache", properties: { type: literal("redis"), url: string() } }),
-        memory: record({ id: "MemoryCache", properties: { type: literal("memory"), maxSize: int32() } }),
+        redis: record({ id: "RedisCache", properties: { url: string() } }),
+        memory: record({ id: "MemoryCache", properties: { maxSize: int32() } }),
       },
     }),
   },

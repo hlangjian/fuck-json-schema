@@ -164,7 +164,8 @@ export function generateModels(
       }
 
       case "union": {
-        const unionItems = Object.values(m.variants).map((v) => toSchema(v, schemaMap, lib))
+        const unionItems = Object.entries(m.variants).map(([key, v]) =>
+          `${toSchema(v, schemaMap, lib)}.extend({ ${m.discriminator}: ${lib.literal(JSON.stringify(key))} })`)
 
         lines.push(`export const ${schemaName} = ${lib.discriminatedUnion(m.discriminator, unionItems)}`)
 
@@ -238,7 +239,8 @@ export function toSchema(model: Models, schemaMap: SchemaMap, lib: ValidationLib
     case "union": {
       if (schemaMap.has(model.id)) return camelCase(model.id) + "Schema"
 
-      const unionItems = Object.values(model.variants).map((v) => toSchema(v, schemaMap, lib))
+      const unionItems = Object.entries(model.variants).map(([key, v]) =>
+        `${toSchema(v, schemaMap, lib)}.extend({ ${model.discriminator}: ${lib.literal(JSON.stringify(key))} })`)
 
       return lib.discriminatedUnion(model.discriminator, unionItems)
     }

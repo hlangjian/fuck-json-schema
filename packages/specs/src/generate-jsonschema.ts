@@ -248,17 +248,31 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
     }
 
     case "union": {
+      const discriminator = model.discriminator as string
+
       const result = Object.entries(model.variants).reduce<{
         registry: SchemaRegistry
         oneOf: JsonSchema[]
       }>(
-        (acc, [, variantModel]) => {
+        (acc, [key, variantModel]) => {
           const ref = acc.registry.getRef(variantModel)
 
           if (ref) {
             return {
               registry: acc.registry,
-              oneOf: [...acc.oneOf, { $ref: ref }],
+              oneOf: [
+                ...acc.oneOf,
+                {
+                  allOf: [
+                    { $ref: ref },
+                    {
+                      type: "object",
+                      properties: { [discriminator]: { const: key } },
+                      required: [discriminator],
+                    },
+                  ],
+                } satisfies JsonSchemaObject,
+              ],
             }
           }
 
@@ -268,9 +282,24 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
             toJsonSchema,
           })
 
+          const variantSchema = generated.jsonSchema as JsonSchemaObject
+
           return {
             registry: generated.registry,
-            oneOf: [...acc.oneOf, generated.jsonSchema],
+            oneOf: [
+              ...acc.oneOf,
+              {
+                ...variantSchema,
+                properties: {
+                  ...(variantSchema.properties as Record<string, JsonSchema>),
+                  [discriminator]: { const: key },
+                },
+                required: [
+                  ...((variantSchema.required as string[]) || []),
+                  discriminator,
+                ],
+              } satisfies JsonSchemaObject,
+            ],
           }
         },
         { registry, oneOf: [] as JsonSchema[] },
