@@ -17,7 +17,7 @@ export function addModelsToSchemaMap(models: Models[], schemaMap: SchemaMap): vo
 
     if (m.kind === "record") {
       Object.values(m.properties).forEach((v) => walk(v))
-    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+    } else if (m.kind === "union") {
       Object.values(m.variants).forEach((v) => walk(v))
     } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
       walk(m.base)
@@ -90,9 +90,7 @@ export function toDotnetType(
       return schemaMap.has(model.id) ? identifier(model.id) : "object"
     }
 
-    case "union":
-
-    case "taggedUnion": {
+    case "union": {
       return schemaMap.has(model.id) ? identifier(model.id) : "object"
     }
 
@@ -112,7 +110,7 @@ export function isDiscriminatorField(
   model: Models,
   fieldName: string,
 ): boolean {
-  if (model.kind !== "taggedUnion") return false
+  if (model.kind !== "union") return false
 
   const discriminator = (model as { discriminator: string }).discriminator
 
@@ -259,14 +257,6 @@ export function generateModels(
       }
 
       case "union": {
-        const variants = Object.entries(m.variants) as [string, Models][]
-
-        emitClosedHierarchy(typeName, variants, schemaMap, identifier, doc, lines, m)
-
-        break
-      }
-
-      case "taggedUnion": {
         const rawVariants = Object.entries(m.variants) as [string, Models][]
 
         const discriminator = (m as { discriminator: string }).discriminator
@@ -404,7 +394,7 @@ function collectAllModels(model: Models): Models[] {
 
     if (m.kind === "record") {
       Object.values(m.properties).forEach((v) => walk(v))
-    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+    } else if (m.kind === "union") {
       Object.values(m.variants).forEach((v) => walk(v))
     } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
       walk(m.base)
@@ -524,8 +514,6 @@ export function resolveNamedRef(
     case "enums":
 
     case "union":
-
-    case "taggedUnion":
       return schemaMap.has(model.id) ? identifier(model.id) : null
 
     case "array":

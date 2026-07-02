@@ -219,9 +219,6 @@ function collectNestedModels(model: Models): [string, Models][] {
     case "union":
       return Object.values(model.variants).flatMap(collectModelDeep)
 
-    case "taggedUnion":
-      return Object.values(model.variants).flatMap(collectModelDeep)
-
     default:
       return []
   }

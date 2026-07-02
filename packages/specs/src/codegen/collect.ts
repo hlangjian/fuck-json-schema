@@ -9,7 +9,6 @@ import type {
   OperationDescriptor,
   RecordDescriptor,
   SchemaMap,
-  TaggedUnionDescriptor,
   UnionDescriptor,
 } from "./descriptors"
 import type { Models, RecordModel as RecordModelType } from "../types"
@@ -42,22 +41,8 @@ export function collectNamedModels(
         deprecated: (model as any).deprecated,
         examples: model.examples,
         variants: model.variants as Record<string, Models>,
-      } as UnionDescriptor]
-    }
-
-    if (model.kind === "taggedUnion") {
-      return [...acc, {
-        kind: "taggedUnion",
-        originalId: model.id,
-        identifier: identifier(model.id),
-        namespace,
-        title: model.title,
-        description: model.description,
-        deprecated: (model as any).deprecated,
-        examples: model.examples,
-        variants: model.variants as Record<string, Models>,
         discriminator: model.discriminator as string,
-      } as TaggedUnionDescriptor]
+      } as UnionDescriptor]
     }
 
     return acc
@@ -212,7 +197,7 @@ function collectAll(ops: OperationDescriptor[]): Models[] {
 
     if (m.kind === "record") Object.values(m.properties).forEach((v) => add(v as Models))
 
-    if (m.kind === "union" || m.kind === "taggedUnion") Object.values(m.variants).forEach((v) => add(v as Models))
+    if (m.kind === "union") Object.values(m.variants).forEach((v) => add(v as Models))
   }
 
   for (const op of ops) {
@@ -237,8 +222,6 @@ export function resolveNamedRoot(m: Models): { id: string } | null {
     case "enums":
 
     case "union":
-
-    case "taggedUnion":
       return m as unknown as { id: string }
 
     case "array":
@@ -273,7 +256,7 @@ function collectDependencies(model: Models, schemaMap: SchemaMap): string[] {
       walk(m.base)
     } else if (m.kind === "record") {
       Object.values(m.properties).forEach((v) => walk(v))
-    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+    } else if (m.kind === "union") {
       Object.values(m.variants).forEach((v) => walk(v))
     }
   }
@@ -303,7 +286,7 @@ export function topologicalSortSchemaMap(schemaMap: SchemaMap): [string, Models]
       for (const p of Object.values(m.properties)) {
         deps.push(...collectDependencies(p, schemaMap))
       }
-    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+    } else if (m.kind === "union") {
       for (const variant of Object.values(m.variants)) {
         deps.push(...collectDependencies(variant, schemaMap))
       }

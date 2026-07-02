@@ -23,7 +23,7 @@ export function addModelsToSchemaMap(models: Models[], schemaMap: SchemaMap): vo
 
     if (m.kind === "record") {
       Object.values(m.properties).forEach((v) => walk(v))
-    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+    } else if (m.kind === "union") {
       Object.values(m.variants).forEach((v) => walk(v))
     } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
       walk(m.base)
@@ -166,20 +166,6 @@ export function generateModels(
       case "union": {
         const unionItems = Object.values(m.variants).map((v) => toSchema(v, schemaMap, lib))
 
-        lines.push(`export const ${schemaName} = ${lib.union(unionItems)}`)
-
-        if (docBlock) lines.push(docBlock)
-
-        lines.push(`export type ${tsName} = ${lib.infer(schemaName)}`)
-
-        lines.push("")
-
-        break
-      }
-
-      case "taggedUnion": {
-        const unionItems = Object.values(m.variants).map((v) => toSchema(v, schemaMap, lib))
-
         lines.push(`export const ${schemaName} = ${lib.discriminatedUnion(m.discriminator, unionItems)}`)
 
         if (docBlock) lines.push(docBlock)
@@ -250,14 +236,6 @@ export function toSchema(model: Models, schemaMap: SchemaMap, lib: ValidationLib
     }
 
     case "union": {
-      if (schemaMap.has(model.id)) return camelCase(model.id) + "Schema"
-
-      const unionItems = Object.values(model.variants).map((v) => toSchema(v, schemaMap, lib))
-
-      return lib.union(unionItems)
-    }
-
-    case "taggedUnion": {
       if (schemaMap.has(model.id)) return camelCase(model.id) + "Schema"
 
       const unionItems = Object.values(model.variants).map((v) => toSchema(v, schemaMap, lib))
@@ -345,9 +323,7 @@ export function toTs(
       return schemaMap.has(model.id) ? identifier(model.id) : "unknown"
     }
 
-    case "union":
-
-    case "taggedUnion": {
+    case "union": {
       if (schemaMap.has(model.id)) return identifier(model.id)
 
       return Object.values(model.variants)
@@ -368,8 +344,6 @@ export function resolveSchemaExpr(model: Models, schemaMap: SchemaMap, lib: Vali
     case "record":
 
     case "union":
-
-    case "taggedUnion":
 
     case "enums": {
       return schemaMap.has(model.id) ? camelCase(model.id) + "Schema" : null
@@ -399,8 +373,6 @@ export function collectSchemaRefs(model: Models, schemaMap: SchemaMap): string[]
     case "record":
 
     case "union":
-
-    case "taggedUnion":
 
     case "enums": {
       return schemaMap.has(model.id) ? [camelCase(model.id) + "Schema"] : []

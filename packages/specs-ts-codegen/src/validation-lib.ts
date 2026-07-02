@@ -40,8 +40,6 @@ export interface ValidationLib {
 
   enums(values: string[]): string
 
-  union(members: string[]): string
-
   discriminatedUnion(key: string, members: string[]): string
 
   field(inner: string, opts?: FieldOptions): string
@@ -79,7 +77,6 @@ export const zodLib: ValidationLib = {
   set: (inner) => `${inner}.array()`,
   map: (key, value) => `z.record(${key}, ${value})`,
   enums: (values) => `z.enum(${escape(values)})`,
-  union: (members) => `z.union([${members.join(", ")}])`,
   discriminatedUnion: (key, members) => `z.discriminatedUnion(${escape(key)}, [${members.join(", ")}])`,
 
   field: (inner, opts = {}) => {
@@ -119,7 +116,6 @@ export const valibotLib: ValidationLib = {
   set: (inner) => `v.set(${inner})`,
   map: (key, value) => `v.record(${key}, ${value})`,
   enums: (values) => `v.picklist(${escape(values)})`,
-  union: (members) => `v.union([${members.join(", ")}])`,
   discriminatedUnion: (key, members) => `v.variant(${escape(key)}, [${members.join(", ")}])`,
 
   field: (inner, opts = {}) =>

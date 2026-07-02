@@ -458,7 +458,7 @@ function generateConfig(
 
     const envKey = `${pascalCase(config.id)}__${dotnetName}`
 
-    if (propModel.kind === "taggedUnion" || propModel.kind === "union" || propModel.kind === "record") {
+    if (propModel.kind === "union" || propModel.kind === "record") {
       lines.push(`            ${dotnetName} = Parse${dotnetName}(configuration),`)
     } else {
       const dotnetType = toDotnetType(propModel, schemaMap, identifier)

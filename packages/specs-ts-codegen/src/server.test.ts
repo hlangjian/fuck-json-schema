@@ -10,7 +10,6 @@ import {
   router,
   set,
   string,
-  taggedUnion,
   union,
 } from "@huanglangjian/specs"
 import { describe, expect, it } from "vitest"
@@ -72,7 +71,7 @@ const ServerConfig = record({
     logLevel: enums({ id: "LogLevel", variants: { debug: "debug", info: "info" }, default: "info" }),
     tags: array({ base: string() }),
     allowedPorts: set({ base: int32() }),
-    database: taggedUnion({
+    database: union({
       id: "DatabaseConfig",
       discriminator: "type",
       variants: {
@@ -82,9 +81,10 @@ const ServerConfig = record({
     }),
     cache: union({
       id: "CacheConfig",
+      discriminator: "type",
       variants: {
-        redis: record({ id: "RedisCache", properties: { url: string() } }),
-        memory: record({ id: "MemoryCache", properties: { maxSize: int32() } }),
+        redis: record({ id: "RedisCache", properties: { type: literal("redis"), url: string() } }),
+        memory: record({ id: "MemoryCache", properties: { type: literal("memory"), maxSize: int32() } }),
       },
     }),
   },
@@ -237,8 +237,8 @@ describe("generateTsServer config env default/optional", () => {
   })
 })
 
-describe("generateTsServer taggedUnion discriminator env var", () => {
-  it("names the discriminator env var after the union discriminator, not the field", () => {
+describe("generateTsServer union discriminator env var", () => {
+  it("names the discriminator env var after the tagged union discriminator, not the field", () => {
     const config = generateTsServer({ routers: [warehouses], configuration: ServerConfig })["config.ts"]
 
     expect(config).toContain('DATABASE_TYPE: z.enum(["postgres","sqlite"]),')

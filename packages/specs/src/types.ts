@@ -62,29 +62,17 @@ export type PropertiesType<T extends Record<string, Models>, R extends keyof T> 
   [key in keyof T]: key extends R ? InferModel<T[key]> : InferModel<T[key]> | undefined
 }>
 
-export interface UnionModel<T extends Record<string, Models>> extends BasicModel<InferUnion<T>> {
-  kind: "union"
-  variants: T
-  id: string
-}
-
-export type InferUnion<T extends Record<string, Models>> = string extends keyof T
-  ? any
-  : {
-      [key in keyof T]: { [k in key]: StandardTypedV1.InferOutput<NonNullable<T[key]["schema"]>> }
-    }[keyof T]
-
-export interface TaggedUnionModel<
+export interface UnionModel<
   K extends string,
   Variants extends Record<string, RecordModel<Record<string, Models>, string>>,
-> extends BasicModel<InferTaggedUnion<K, Variants>> {
-  kind: "taggedUnion"
+> extends BasicModel<InferUnion<K, Variants>> {
+  kind: "union"
   discriminator: K
   variants: Variants
   id: string
 }
 
-export type InferTaggedUnion<
+export type InferUnion<
   K extends string,
   Variants extends Record<string, RecordModel<Record<string, Models>, string>>,
 > = string extends K
@@ -93,7 +81,7 @@ export type InferTaggedUnion<
       [key in keyof Variants]: StandardTypedV1.InferOutput<NonNullable<Variants[key]["schema"]>>
     }[keyof Variants]
 
-export type ValidateTaggedUnion<
+export type ValidateUnion<
   K extends string,
   V extends Record<string, RecordModel<Record<string, Models>, string>>,
 > = {
@@ -102,9 +90,9 @@ export type ValidateTaggedUnion<
       ? Properties[K] extends LiteralModel<Key & string>
         ? K extends Required
           ? never
-          : `[taggedUnion] variant "${Key & string}" → discriminator "${K}" 不在 required 中`
-        : `[taggedUnion] variant "${Key & string}" → "${K}" 必须为 literal("${Key & string}")`
-      : `[taggedUnion] variant "${Key & string}" → 缺少 discriminator "${K}"`
+          : `[union] variant "${Key & string}" → discriminator "${K}" 不在 required 中`
+        : `[union] variant "${Key & string}" → "${K}" 必须为 literal("${Key & string}")`
+      : `[union] variant "${Key & string}" → 缺少 discriminator "${K}"`
     : never]: string
 }
 
@@ -151,8 +139,7 @@ export type Models =
   | SetModel<any>
   | MapModel<any>
   | RecordModel<Record<string, Models>, string>
-  | UnionModel<Record<string, Models>>
-  | TaggedUnionModel<string, Record<string, RecordModel<Record<string, Models>, string>>>
+  | UnionModel<string, Record<string, RecordModel<Record<string, Models>, string>>>
   | LiteralModel<string | number | boolean>
   | NullModel
   | EnumsModel<{ [key: string]: string }>
@@ -220,17 +207,13 @@ export function record<
   return { kind: "record", ...rest, required } as any
 }
 
-export function union<T extends Record<string, Models>>(options: OptionsOf<UnionModel<T>>): UnionModel<T> {
-  return { kind: "union", ...options }
-}
-
-export function taggedUnion<
+export function union<
   K extends string,
   Variants extends Record<string, RecordModel<Record<string, Models>, string>>,
 >(
-  options: Omit<TaggedUnionModel<K, Variants>, "kind"> & ValidateTaggedUnion<K, Variants>,
-): TaggedUnionModel<K, Variants> {
-  return { kind: "taggedUnion", ...options }
+  options: Omit<UnionModel<K, Variants>, "kind"> & ValidateUnion<K, Variants>,
+): UnionModel<K, Variants> {
+  return { kind: "union", ...options }
 }
 
 export function literal<const T extends string | boolean | number>(value: T): LiteralModel<T> {

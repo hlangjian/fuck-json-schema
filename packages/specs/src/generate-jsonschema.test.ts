@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { generateConfigJsonSchema, generateJsonSchema } from "./generate-jsonschema"
-import { int32, record, string, taggedUnion } from "./types"
+import { int32, record, string, union } from "./types"
 
 describe("generateConfigJsonSchema", () => {
   it("marks fields with default as not-required in the JSON Schema", () => {
@@ -72,7 +72,7 @@ describe("generateConfigJsonSchema", () => {
     }
   })
 
-  it("handles taggedUnion variants", () => {
+  it("handles union variants", () => {
     const Pg = record({
       id: "PgConfig",
       properties: {
@@ -91,7 +91,7 @@ describe("generateConfigJsonSchema", () => {
       },
     })
 
-    const DbConfig = taggedUnion({
+    const DbConfig = union({
       id: "MyDbConfig",
       discriminator: "type",
       variants: { pg: Pg as any, sqlite: Sqlite as any },

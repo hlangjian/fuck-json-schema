@@ -10,7 +10,7 @@ import { generateConfigJsonSchema } from "./generate-jsonschema"
 import { apikey, openIdConnect } from "./security"
 import type { SecurityPolicyModel } from "./security"
 import { deployOpenIdConnect } from "./deployment"
-import { array, datetime, enums, int32, literal, record, set, string, taggedUnion, union } from "./types"
+import { array, datetime, enums, int32, literal, record, set, string, union } from "./types"
 
 const Warehouse = record({
   id: "Warehouse",
@@ -67,7 +67,7 @@ const OldWarehouse = record({
   },
 })
 
-// ---- Server config with taggedUnion, union, nested ----
+// ---- Server config with union, nested ----
 const PostgresConfig = record({
   id: "PostgresConfig",
   properties: {
@@ -76,7 +76,7 @@ const PostgresConfig = record({
     port: int32({ description: "PostgreSQL 端口" }),
     username: string({ description: "数据库用户名" }),
     password: string({ description: "数据库密码" }),
-    auth: taggedUnion({
+    auth: union({
       id: "PostgresAuth",
       discriminator: "method",
       variants: {
@@ -111,7 +111,7 @@ const ServerConfig = record({
     logLevel: enums({ id: "LogLevel", variants: { debug: "debug", info: "info", warn: "warn", error: "error" } }),
     tags: array({ base: string(), description: "标签列表" }),
     allowedPorts: set({ base: int32(), description: "允许的端口集合" }),
-    database: taggedUnion({
+    database: union({
       id: "DatabaseConfig",
       discriminator: "type",
       variants: {
@@ -121,15 +121,16 @@ const ServerConfig = record({
     }),
     cache: union({
       id: "CacheConfig",
+      discriminator: "type",
       variants: {
         redis: record({
           id: "RedisCache",
-          properties: { url: string(), prefix: string() },
+          properties: { type: literal("redis"), url: string(), prefix: string() },
           optional: ["prefix"],
         }),
         memory: record({
           id: "MemoryCache",
-          properties: { maxSize: int32(), ttl: int32() },
+          properties: { type: literal("memory"), maxSize: int32(), ttl: int32() },
           optional: ["ttl"],
         }),
       },

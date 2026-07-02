@@ -535,11 +535,10 @@ interface VariantNode {
   resolveFnName: string
   envVars: EnvVar[]
   fields: FieldNode[]
-  taggedSwitches: TaggedSwitchNode[]
   unionSwitches: UnionSwitchNode[]
 }
 
-interface TaggedSwitchNode {
+interface UnionSwitchNode {
   resolveFnName: string
   discEnvName: string
   discSchemaExpr: string
@@ -547,17 +546,9 @@ interface TaggedSwitchNode {
   variants: VariantNode[]
 }
 
-interface UnionSwitchNode {
-  resolveFnName: string
-  discEnvName: string
-  discSchemaExpr: string
-  variants: VariantNode[]
-}
-
 interface CollectResult {
   envVars: EnvVar[]
   fields: FieldNode[]
-  taggedSwitches: TaggedSwitchNode[]
   unionSwitches: UnionSwitchNode[]
 }
 
@@ -589,10 +580,6 @@ function generateConfig(
   out.push(`})`)
 
   out.push("")
-
-  for (const sw of root.taggedSwitches) {
-    emitTaggedSwitch(sw, out, lib)
-  }
 
   for (const sw of root.unionSwitches) {
     emitUnionSwitch(sw, out, lib)
@@ -630,10 +617,6 @@ function generateConfig(
 }
 
 function emitVariantResolvers(v: VariantNode, out: string[], lib: ValidationLib): void {
-  for (const nestedSw of v.taggedSwitches) {
-    emitTaggedSwitch(nestedSw, out, lib)
-  }
-
   for (const nestedSw of v.unionSwitches) {
     emitUnionSwitch(nestedSw, out, lib)
   }
@@ -669,28 +652,6 @@ function emitVariantResolvers(v: VariantNode, out: string[], lib: ValidationLib)
   out.push("")
 }
 
-function emitTaggedSwitch(sw: TaggedSwitchNode, out: string[], lib: ValidationLib): void {
-  for (const v of sw.variants) {
-    emitVariantResolvers(v, out, lib)
-  }
-
-  out.push(`function ${sw.resolveFnName}(env: Record<string, string | undefined>, dv: string) {`)
-
-  out.push(`  switch (dv) {`)
-
-  for (const v of sw.variants) {
-    out.push(`    case "${v.varName}": return ${v.resolveFnName}(env)`)
-  }
-
-  out.push(`  }`)
-
-  out.push(`  throw new Error(\`unknown variant: \${dv}\`)`)
-
-  out.push(`}`)
-
-  out.push("")
-}
-
 function emitUnionSwitch(sw: UnionSwitchNode, out: string[], lib: ValidationLib): void {
   for (const v of sw.variants) {
     emitVariantResolvers(v, out, lib)
@@ -701,7 +662,7 @@ function emitUnionSwitch(sw: UnionSwitchNode, out: string[], lib: ValidationLib)
   out.push(`  switch (dv) {`)
 
   for (const v of sw.variants) {
-    out.push(`    case "${v.varName}": return { type: "${v.varName}" as const, ...${v.resolveFnName}(env) }`)
+    out.push(`    case "${v.varName}": return ${v.resolveFnName}(env)`)
   }
 
   out.push(`  }`)
@@ -735,8 +696,6 @@ function collectLevel(
   const envVars: EnvVar[] = []
 
   const fields: FieldNode[] = []
-
-  const taggedSwitches: TaggedSwitchNode[] = []
 
   const unionSwitches: UnionSwitchNode[] = []
 
@@ -799,8 +758,6 @@ function collectLevel(
 
         envVars.push(...child.envVars)
 
-        taggedSwitches.push(...child.taggedSwitches)
-
         unionSwitches.push(...child.unionSwitches)
 
         fields.push({ name: propName, kind: "record", childFields: child.fields })
@@ -808,7 +765,7 @@ function collectLevel(
         break
       }
 
-      case "taggedUnion": {
+      case "union": {
         const discEnvName = `${envPrefix}_${snakeCase(model.discriminator as string).toUpperCase()}`
 
         const discSchema = lib.enums(Object.keys(model.variants))
@@ -834,12 +791,11 @@ function collectLevel(
             resolveFnName: `${resolveFnName}${pascalCase(vKey)}`,
             envVars: child.envVars,
             fields: child.fields,
-            taggedSwitches: child.taggedSwitches,
             unionSwitches: child.unionSwitches,
           })
         }
 
-        taggedSwitches.push({
+        unionSwitches.push({
           resolveFnName,
           discEnvName,
           discSchemaExpr: discSchema,
@@ -848,35 +804,6 @@ function collectLevel(
         })
 
         fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName, discEnvName })
-
-        break
-      }
-
-      case "union": {
-        const discSchema = lib.enums(Object.keys(model.variants))
-
-        envVars.push({ envName: envPrefix, schemaExpr: discSchema })
-
-        const resolveFnName = `resolve${pascalCase(propName)}`
-
-        const variants: VariantNode[] = []
-
-        for (const [vKey, vModel] of Object.entries(model.variants)) {
-          const child = collectVariant(vModel as Models, envPrefix, lib)
-
-          variants.push({
-            varName: vKey,
-            resolveFnName: `${resolveFnName}${pascalCase(vKey)}`,
-            envVars: child.envVars,
-            fields: child.fields,
-            taggedSwitches: child.taggedSwitches,
-            unionSwitches: child.unionSwitches,
-          })
-        }
-
-        unionSwitches.push({ resolveFnName, discEnvName: envPrefix, discSchemaExpr: discSchema, variants })
-
-        fields.push({ name: propName, kind: "switch", switchFnName: resolveFnName, discEnvName: envPrefix })
 
         break
       }
@@ -918,24 +845,7 @@ function collectLevel(
     }
   }
 
-  return { envVars, fields, taggedSwitches, unionSwitches }
-}
-
-function collectVariant(model: Models, prefix: string, lib: ValidationLib): CollectResult {
-  if (model.kind === "record") {
-    const rec = model as RecordModel<Record<string, Models>, string>
-
-    return collectLevel(rec.properties as Record<string, Models>, rec.required as string[], prefix, lib)
-  }
-
-  const envName = prefix
-
-  return {
-    envVars: [{ envName, schemaExpr: toSchemaEnv(model, {} as SchemaMap, lib) }],
-    fields: [{ name: "value", kind: "env", envName }],
-    taggedSwitches: [],
-    unionSwitches: [],
-  }
+  return { envVars, fields, unionSwitches }
 }
 
 function isSimpleType(model: Models): boolean {

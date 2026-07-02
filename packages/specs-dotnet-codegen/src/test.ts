@@ -3,7 +3,7 @@ import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { binary as binaryResponse, json, route, router } from "@huanglangjian/specs"
-import { array, datetime, enums, int32, literal, record, set, string, taggedUnion, union } from "@huanglangjian/specs"
+import { array, datetime, enums, int32, literal, record, set, string, union } from "@huanglangjian/specs"
 
 import { generateDotnetClient } from "./client"
 import { generateDotnetServer } from "./server"
@@ -77,7 +77,7 @@ const PostgresConfig = record({
     port: int32({ description: "PostgreSQL 端口" }),
     username: string({ description: "数据库用户名" }),
     password: string({ description: "数据库密码" }),
-    auth: taggedUnion({
+    auth: union({
       id: "PostgresAuth",
       discriminator: "method",
       variants: {
@@ -116,7 +116,7 @@ const ServerConfig = record({
     }),
     tags: array({ base: string(), description: "标签列表" }),
     allowed_ports: set({ base: int32(), description: "允许的端口集合" }),
-    database: taggedUnion({
+    database: union({
       id: "DatabaseConfig",
       discriminator: "type",
       variants: {
@@ -126,15 +126,16 @@ const ServerConfig = record({
     }),
     cache: union({
       id: "CacheConfig",
+      discriminator: "type",
       variants: {
         redis: record({
           id: "RedisCache",
-          properties: { url: string(), prefix: string() },
+          properties: { type: literal("redis"), url: string(), prefix: string() },
           optional: ["prefix"],
         }),
         memory: record({
           id: "MemoryCache",
-          properties: { max_size: int32(), ttl: int32() },
+          properties: { type: literal("memory"), max_size: int32(), ttl: int32() },
           optional: ["ttl"],
         }),
       },

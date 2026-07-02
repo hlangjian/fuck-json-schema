@@ -48,15 +48,10 @@ export interface EnumsDescriptor extends ModelDescriptor {
 export interface UnionDescriptor extends ModelDescriptor {
   kind: "union"
   variants: Record<string, Models>
-}
-
-export interface TaggedUnionDescriptor extends ModelDescriptor {
-  kind: "taggedUnion"
-  variants: Record<string, Models>
   discriminator: string
 }
 
-export type AnyNamedDescriptor = RecordDescriptor | EnumsDescriptor | UnionDescriptor | TaggedUnionDescriptor
+export type AnyNamedDescriptor = RecordDescriptor | EnumsDescriptor | UnionDescriptor
 
 export interface OperationDescriptor {
   id: string

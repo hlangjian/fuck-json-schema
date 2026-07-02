@@ -1,7 +1,7 @@
 import type { StandardTypedV1 } from "@standard-schema/spec"
 
 import type { JsonSchema, JsonSchemaObject } from "./schemas/json-schema-draft-2020-12"
-import { array, map, record, set, taggedUnion, union } from "./types"
+import { array, map, record, set, union } from "./types"
 import type { Models } from "./types"
 
 export interface SchemaRegistry {
@@ -252,55 +252,6 @@ export function buildJsonSchema(options: BuildJsonSchemaOptions): BuildJsonSchem
         registry: SchemaRegistry
         oneOf: JsonSchema[]
       }>(
-        (acc, [key, variantModel]) => {
-          const ref = acc.registry.getRef(variantModel)
-
-          if (ref) {
-            return {
-              registry: acc.registry,
-              oneOf: [
-                ...acc.oneOf,
-                {
-                  type: "object",
-                  required: [key],
-                  properties: { [key]: { $ref: ref } },
-                } satisfies JsonSchemaObject,
-              ],
-            }
-          }
-
-          const generated = buildJsonSchema({
-            model: variantModel,
-            registry: acc.registry,
-            toJsonSchema,
-          })
-
-          return {
-            registry: generated.registry,
-            oneOf: [
-              ...acc.oneOf,
-              {
-                type: "object",
-                required: [key],
-                properties: { [key]: generated.jsonSchema },
-              } satisfies JsonSchemaObject,
-            ],
-          }
-        },
-        { registry, oneOf: [] as JsonSchema[] },
-      )
-
-      return {
-        jsonSchema: { ...schema, oneOf: result.oneOf },
-        registry: result.registry,
-      }
-    }
-
-    case "taggedUnion": {
-      const result = Object.entries(model.variants).reduce<{
-        registry: SchemaRegistry
-        oneOf: JsonSchema[]
-      }>(
         (acc, [, variantModel]) => {
           const ref = acc.registry.getRef(variantModel)
 
@@ -418,7 +369,7 @@ function collectNamedModels(model: Models): Models[] {
 
     if (m.kind === "record") {
       Object.values(m.properties).forEach((v) => walk(v))
-    } else if (m.kind === "union" || m.kind === "taggedUnion") {
+    } else if (m.kind === "union") {
       Object.values(m.variants).forEach((v) => walk(v))
     } else if (m.kind === "array" || m.kind === "set" || m.kind === "map") {
       walk(m.base)
@@ -434,7 +385,7 @@ function collectNamedModels(model: Models): Models[] {
 /**
  * 为一个模型生成完整的 JSON Schema（Draft 2020-12）。
  *
- * 自动遍历模型树发现所有命名子模型（带 `id` 的 record / enum / union / taggedUnion），
+ * 自动遍历模型树发现所有命名子模型（带 `id` 的 record / enum / union），
  * 注册到 registry 后，根模型的属性通过 $ref 指向子模型，子模型的 schema 放入 $defs。
  *
  * 如需额外注入库特有的 JSON Schema 字段（如 zod 的 format），
@@ -509,28 +460,6 @@ function toConfigInput(model: Models, cache = new Map<Models, Models>()): Models
     return result
   }
 
-  if (model.kind === "taggedUnion") {
-    const variants: Record<string, Models> = {}
-
-    for (const [key, variant] of Object.entries(model.variants)) {
-      variants[key] = toConfigInput(variant, cache)
-    }
-
-    const result = taggedUnion({
-      id: model.id,
-      discriminator: model.discriminator as any,
-      variants: variants as any,
-      title: model.title,
-      description: model.description,
-      deprecated: model.deprecated,
-      examples: model.examples,
-    } as any)
-
-    cache.set(model, result)
-
-    return result
-  }
-
   if (model.kind === "union") {
     const variants: Record<string, Models> = {}
 
@@ -540,6 +469,7 @@ function toConfigInput(model: Models, cache = new Map<Models, Models>()): Models
 
     const result = union({
       id: model.id,
+      discriminator: model.discriminator as any,
       variants: variants as any,
       title: model.title,
       description: model.description,
