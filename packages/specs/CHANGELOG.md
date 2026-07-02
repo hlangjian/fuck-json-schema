@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.18.1
+
+### Patch Changes
+
+- 7903eae: fix: fallback to route key as operation summary when not provided
+
 ## 0.18.0
 
 ### Minor Changes
