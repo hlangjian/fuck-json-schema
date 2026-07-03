@@ -350,7 +350,7 @@ function generateClientFn(
     if (hasParams) {
       lines.push(`  const url = \`\${${urlBuilderName}(${paramsRef})}\${qs}\``)
     } else {
-      lines.push(`  const url = \`${urlBuilderName}()\${qs}\``)
+      lines.push(`  const url = \`\${${urlBuilderName}()}\${qs}\``)
     }
   } else {
     if (hasParams) {
