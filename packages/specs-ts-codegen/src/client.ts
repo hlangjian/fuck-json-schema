@@ -44,7 +44,38 @@ export function generateTsClient(options: TsClientOptions): Record<string, strin
 
   files["index.ts"] = generateClientIndex(operations)
 
+  files["client.ts"] = generateClientFile()
+
   return files
+}
+
+function generateClientFile(): string {
+  return `// Generated client — configuration for typed HTTP operations
+
+export interface Client {
+  fetch: (url: string, init?: RequestInit) => Promise<Response>
+}
+
+export interface ClientConfig {
+  baseUrl: string
+  headers?: Record<string, string> | (() => Record<string, string> | Promise<Record<string, string>>)
+  fetch?: typeof globalThis.fetch
+}
+
+export function createClient(config: ClientConfig): Client {
+  const { baseUrl, headers, fetch: userFetch } = config
+  return {
+    fetch: async (url, init) => {
+      let h = init?.headers ? new Headers(init.headers) : new Headers()
+      if (headers) {
+        const extra = typeof headers === "function" ? await headers() : headers
+        for (const [k, v] of Object.entries(extra)) h.set(k, v)
+      }
+      return (userFetch ?? globalThis.fetch)(\`\${baseUrl}\${url}\`, { ...init, headers: h })
+    },
+  }
+}
+`
 }
 
 function opJsdoc(op: { summary?: string; description?: string; deprecated?: boolean }): string | null {
@@ -71,6 +102,10 @@ function generateClientFn(
   const functionName = camelCase(operation.id)
 
   const OperationName = pascalCase(operation.id)
+
+  const urlBuilderName = `get${OperationName}Url`
+
+  const urlBuilderPath = operation.path.replace(/\{(\w+)\}/g, (_, name) => `\${encodeURIComponent(params.${name})}`)
 
   const hasBody = operation.requestModel != null && operation.requestModel.kind !== "null"
 
@@ -140,6 +175,10 @@ function generateClientFn(
     lines.push("")
   }
 
+  lines.push(`import type { Client } from "../client"`)
+
+  lines.push("")
+
   const opDoc = opJsdoc(operation)
 
   if (opDoc) lines.push(opDoc)
@@ -148,20 +187,26 @@ function generateClientFn(
 
   lines.push("")
 
-  lines.push(`  export interface Request {`)
-
   if (hasParams) {
-    lines.push(`    params: {`)
+    lines.push(`  export interface Params {`)
 
     for (const [n, v] of Object.entries(operation.pathVariables)) {
-      const doc = fieldJsdoc(v.model, "      ")
+      const doc = fieldJsdoc(v.model, "    ")
 
       if (doc) lines.push(doc)
 
-      lines.push(`      ${n}: ${toTs(v.model, schemaMap, identifier, namespace)};`)
+      lines.push(`    ${n}: ${toTs(v.model, schemaMap, identifier, namespace)};`)
     }
 
-    lines.push(`    };`)
+    lines.push(`  }`)
+
+    lines.push("")
+  }
+
+  lines.push(`  export interface Request {`)
+
+  if (hasParams) {
+    lines.push(`    params: Params;`)
   }
 
   if (hasQuery) {
@@ -206,7 +251,7 @@ function generateClientFn(
     lines.push(`    body: ${toTs(operation.requestModel!, schemaMap, identifier, namespace)};`)
   }
 
-  lines.push(`    baseUrl?: string;`)
+    lines.push(`    client?: Client;`)
 
   lines.push(`  }`)
 
@@ -255,19 +300,33 @@ function generateClientFn(
 
   lines.push("")
 
+  if (hasParams) {
+    lines.push(`export function ${urlBuilderName}(params: ${OperationName}Operation.Params): string {`)
+
+    lines.push(`  return \`${urlBuilderPath}\``)
+
+    lines.push(`}`)
+  } else {
+    lines.push(`export function ${urlBuilderName}(): string {`)
+
+    lines.push(`  return "${operation.path}"`)
+
+    lines.push(`}`)
+  }
+
+  lines.push("")
+
   const hasRequired = hasParams || hasBody
 
   const reqParam = hasRequired ? `req: ${OperationName}Operation.Request` : `req?: ${OperationName}Operation.Request`
 
   const retType = `${OperationName}Operation.Response`
 
-  const pathExpr = operation.path.replace(/\{(\w+)\}/g, (_, name) => `\${encodeURIComponent(req.params.${name})}`)
-
   if (opDoc) lines.push(opDoc)
 
   lines.push(`export async function ${functionName}(${reqParam}): Promise<${retType}> {`)
 
-  lines.push(`  const baseUrl = req?.baseUrl ?? ""`)
+  lines.push(`  const f = ${hasRequired ? "req.client" : "req?.client"}?.fetch ?? globalThis.fetch`)
 
   if (hasQuery) {
     lines.push(`  const parts: string[] = []`)
@@ -286,14 +345,24 @@ function generateClientFn(
 
     lines.push(`  const qs = parts.length > 0 ? "?" + parts.join("&") : ""`)
 
-    lines.push(`  const url = \`\${baseUrl}${pathExpr}\${qs}\``)
+    const paramsRef = `${hasRequired ? "req.params" : "req?.params"}`
+
+    if (hasParams) {
+      lines.push(`  const url = \`\${${urlBuilderName}(${paramsRef})}\${qs}\``)
+    } else {
+      lines.push(`  const url = \`${urlBuilderName}()\${qs}\``)
+    }
   } else {
-    lines.push(`  const url = \`\${baseUrl}${pathExpr}\``)
+    if (hasParams) {
+      lines.push(`  const url = ${urlBuilderName}(${hasRequired ? "req.params" : "req?.params"})`)
+    } else {
+      lines.push(`  const url = ${urlBuilderName}()`)
+    }
   }
 
   lines.push("")
 
-  lines.push(`  const res = await fetch(url, {`)
+  lines.push(`  const res = await f(url, {`)
 
   lines.push(`    method: "${operation.method}",`)
 
@@ -369,13 +438,23 @@ function generateClientIndex(operations: OperationDescriptor[]): string {
 
       const OperationName = pascalCase(operation.id)
 
-      lines.push(`export { ${n} } from "./${camelCase(operation.group)}/${n}"`)
+      const urlBuilderName = `get${OperationName}Url`
+
+      lines.push(`export { ${n}, ${urlBuilderName} } from "./${camelCase(operation.group)}/${n}"`)
 
       lines.push(`export type { ${OperationName}Operation } from "./${camelCase(operation.group)}/${n}"`)
     }
 
     lines.push("")
   }
+
+  lines.push(`export { createClient } from "./client"`)
+
+  lines.push("")
+
+  lines.push(`export type { Client, ClientConfig } from "./client"`)
+
+  lines.push("")
 
   return lines.join("\n")
 }

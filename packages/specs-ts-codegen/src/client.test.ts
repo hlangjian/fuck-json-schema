@@ -70,7 +70,9 @@ describe("generateTsClient request field access nesting", () => {
 
     const opFile = files["warehouses/getWarehouse.ts"]
 
-    expect(opFile).toContain("encodeURIComponent(req.params.id)")
+    expect(opFile).toContain("encodeURIComponent(params.id)")
+
+    expect(opFile).toContain("getGetWarehouseUrl(req.params)")
 
     expect(opFile).not.toContain("encodeURIComponent(req.id)")
   })
