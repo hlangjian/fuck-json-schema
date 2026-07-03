@@ -1,5 +1,11 @@
 # @huanglangjian/specs-ts-codegen
 
+## 0.17.1
+
+### Patch Changes
+
+- 09921bf: Fix generated template literal for operations without path params — URL builder call was emitted as literal string instead of interpolated function call
+
 ## 0.17.0
 
 ### Minor Changes
