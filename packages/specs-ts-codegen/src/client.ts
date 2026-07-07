@@ -52,16 +52,6 @@ export function generateTsClient(options: TsClientOptions): Record<string, strin
 function generateClientFile(): string {
   return `// Generated client — configuration for typed HTTP operations
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly response: Response,
-  ) {
-    super(message)
-    this.name = "ApiError"
-  }
-}
-
 export interface Client {
   fetch: (url: string, init?: RequestInit) => Promise<Response>
 }
@@ -184,8 +174,6 @@ function generateClientFn(
   if (typeImports.length > 0 || schemaImports.length > 0) {
     lines.push("")
   }
-
-  lines.push(`import { ApiError } from "../client"`)
 
   lines.push(`import type { Client } from "../client"`)
 
@@ -414,7 +402,7 @@ function generateClientFn(
     lines.push(`    }`)
   }
 
-  lines.push(`    default: { throw new ApiError(\`${operation.method} ${operation.path} failed: \${res.status}\`, res) }`)
+  lines.push(`    default: { throw new Error(\`${operation.method} ${operation.path} failed: \${res.status}\`) }`)
 
   lines.push(`  }`)
 
@@ -460,7 +448,7 @@ function generateClientIndex(operations: OperationDescriptor[]): string {
     lines.push("")
   }
 
-  lines.push(`export { createClient, ApiError } from "./client"`)
+  lines.push(`export { createClient } from "./client"`)
 
   lines.push("")
 
