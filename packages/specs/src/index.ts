@@ -12,6 +12,10 @@ export { buildJsonSchema, generateJsonSchema, generateConfigJsonSchema, createJs
 
 export type { BuildJsonSchemaOptions, SchemaRegistry, ToJsonSchema } from "./generate-jsonschema"
 
+export { generateManifests } from "./generate-manifest"
+
+export type { ManifestOptions } from "./generate-manifest"
+
 export * from "./generate-openapi"
 
 export * from "./codegen/descriptors"
