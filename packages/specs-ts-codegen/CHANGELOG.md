@@ -1,5 +1,13 @@
 # @huanglangjian/specs-ts-codegen
 
+## 0.17.2
+
+### Patch Changes
+
+- b23549e: Fix client error handling — unhandled status codes now throw `ApiError` wrapping the full `Response` object instead of a plain `Error` with only a message string
+- Updated dependencies [b23549e]
+  - @huanglangjian/specs@0.19.0
+
 ## 0.17.1
 
 ### Patch Changes

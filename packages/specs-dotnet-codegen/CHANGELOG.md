@@ -1,5 +1,12 @@
 # @huanglangjian/specs-dotnet-codegen
 
+## 0.3.3
+
+### Patch Changes
+
+- Updated dependencies [b23549e]
+  - @huanglangjian/specs@0.19.0
+
 ## 0.3.2
 
 ### Patch Changes
