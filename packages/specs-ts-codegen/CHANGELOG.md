@@ -1,5 +1,11 @@
 # @huanglangjian/specs-ts-codegen
 
+## 0.18.0
+
+### Minor Changes
+
+- 60b1401: Response type now uses named variants instead of anonymous status codes: each arm carries `variant: "ResponseKey"`, `body` (parsed & validated), and `response` (raw fetch Response). Fallback arm `{ response: _RawResponse }` replaces the old `throw new Error` for unhandled status codes.
+
 ## 0.17.2
 
 ### Patch Changes
