@@ -6,6 +6,8 @@ export * from "./security"
 
 export * from "./deployment"
 
+export * from "./pubsub"
+
 export { buildJsonSchema, generateJsonSchema, generateConfigJsonSchema, createJsonSchemaRegistry, createOpenapiSchemaRegistry } from "./generate-jsonschema"
 
 export type { BuildJsonSchemaOptions, SchemaRegistry, ToJsonSchema } from "./generate-jsonschema"
