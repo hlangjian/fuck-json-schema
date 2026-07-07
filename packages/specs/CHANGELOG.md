@@ -1,5 +1,11 @@
 # @huanglangjian/specs
 
+## 0.19.0
+
+### Minor Changes
+
+- b23549e: Add `generateManifests()` — language-agnostic Markdown documentation generator producing `server.md`, `client.md`, `subscriber.md` with JSON Schema references for AI-driven development
+
 ## 0.18.2
 
 ### Patch Changes
