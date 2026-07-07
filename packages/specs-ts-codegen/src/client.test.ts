@@ -155,13 +155,13 @@ describe("generateTsClient switch/case response handling", () => {
     expect(opFile).toContain("404 as const")
   })
 
-  it("throws Error in default case for unhandled statuses", () => {
+  it("returns raw response in default case for unhandled statuses", () => {
     const files = generateTsClient({ routers: [warehouses] })
 
     const opFile = files["warehouses/updateWarehouse.ts"]
 
-    expect(opFile).toContain("throw new Error")
+    expect(opFile).toContain("default: { return { response: res } }")
 
-    expect(opFile).toContain("default:")
+    expect(opFile).not.toContain("throw new Error")
   })
 })
